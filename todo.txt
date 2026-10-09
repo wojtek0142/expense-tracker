@@ -9,3 +9,10 @@
 4 layout glownego ekranu
 
 5 robienie zdejcie przez aplikacje i wyslanie do backendu
+
+
+
+
+zrobione
+
+nic

@@ -1,0 +1,11 @@
+1 z bazy mozliwosc wyciagniecia wydatkow po
+ dacie (zakres dat)
+ kategorii + suma w kategorii z danego miesiaca
+
+2 dodawanie zdjęcia do bazy (wyciagniecie tekstu)
+
+3 layout raportow
+
+4 layout glownego ekranu
+
+5 robienie zdejcie przez aplikacje i wyslanie do backendu

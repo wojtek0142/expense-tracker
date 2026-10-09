@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">expense-tracker</string>
+    <string name="menu_reports">Raport</string>
+    <string name="menu_add_photo_receipt">Paragon</string>
+    <string name="menu_add_receipt">Dodaj wydatek</string>
+
 </resources>

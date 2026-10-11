@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -36,14 +38,38 @@ android {
 }
 
 dependencies {
+    // Compose BOM
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.compose.material3)
+
+    // Compose UI
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)   // NOWE – ikony
+
+    // AndroidX Core / Lifecycle / Activity
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)        // NOWE – collectAsState()
+    implementation(libs.androidx.activity.compose)
+
+    // Navigation Compose
+    implementation(libs.androidx.navigation.compose)                 // NOWE
+
+    // Hilt
+    implementation(libs.hilt.android)                                // NOWE
+    ksp(libs.hilt.compiler)                                          // NOWE
+    implementation(libs.androidx.hilt.navigation.compose)            // NOWE – hiltViewModel()
+
+    // OkHttp
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Material / Coordinator
+    implementation(libs.androidx.coordinatorlayout)
+    implementation(libs.material)
+
+    // Testy
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -51,8 +77,4 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
-
-    implementation(libs.androidx.coordinatorlayout)
-    implementation(libs.material)
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }

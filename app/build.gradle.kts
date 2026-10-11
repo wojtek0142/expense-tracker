@@ -54,4 +54,5 @@ dependencies {
 
     implementation(libs.androidx.coordinatorlayout)
     implementation(libs.material)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }

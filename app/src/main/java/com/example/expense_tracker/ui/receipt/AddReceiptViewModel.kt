@@ -3,7 +3,7 @@ package com.example.expense_tracker.ui.receipt
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.expense_tracker.ui.data.repository.ReceiptRepository
+import com.example.expense_tracker.data.repository.ReceiptRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

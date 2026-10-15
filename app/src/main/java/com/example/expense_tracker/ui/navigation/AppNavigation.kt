@@ -26,19 +26,21 @@ sealed class Destination(
 ) {
     object Main : Destination("main", "Główny", Icons.Default.Home)
     object AddReceipt : Destination("add_receipt", "Paragon", Icons.Default.AddAPhoto)
+    object AddReceiptv2 : Destination("add_receipt", "Paragon", Icons.Default.AddAPhoto)
     object Reports : Destination("reports", "Raporty", Icons.Default.BarChart)
     object Settings : Destination("settings", "Ustawienia", Icons.Default.Settings)
 }
 
 @Composable
-fun AppNavigation() { // <-- Usunięto parametr viewModel
+fun AppNavigation() {
     val navController = rememberNavController()
 
     val bottomBarItems = listOf(
         Destination.Main,
         Destination.AddReceipt,
         Destination.Reports,
-        Destination.Settings
+        Destination.Settings,
+        Destination.AddReceiptv2
     )
 
     Scaffold(
@@ -55,10 +57,7 @@ fun AppNavigation() { // <-- Usunięto parametr viewModel
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Destination.Main.route) {
-                MainScreen(
-                    onNavigateToAddReceipt = { navController.navigate(Destination.AddReceipt.route) },
-                    onNavigateToReports = { navController.navigate(Destination.Reports.route) }
-                )
+                MainScreen()
             }
             composable(Destination.AddReceipt.route) {
                 AddReceiptScreen()

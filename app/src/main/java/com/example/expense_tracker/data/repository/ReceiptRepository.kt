@@ -1,4 +1,4 @@
-package com.example.expense_tracker.ui.data.repository
+package com.example.expense_tracker.data.repository
 
 import android.content.ContentResolver
 import android.net.Uri

@@ -73,7 +73,7 @@ class ReportsViewModel @Inject constructor() : ViewModel() {
             name = "Zakupy",
             amount = 461.10,
             percentage = 12,
-            color = Color(0xFF00838F), // Morski/Cyjan
+            color = Color(0xFF00838F), // Cyan
             icon = Icons.Default.ShoppingBag
         ),
         CategoryReport(

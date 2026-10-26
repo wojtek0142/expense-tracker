@@ -10,12 +10,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.expense_tracker.ui.main.MainScreen
 import com.example.expense_tracker.ui.receipt.AddReceiptScreen
+import com.example.expense_tracker.ui.reports.AllCategoriesScreen
 import com.example.expense_tracker.ui.reports.ReportsScreen
+import com.example.expense_tracker.ui.reports.ReportsViewModel
 import com.example.expense_tracker.ui.settings.SettingsScreen
 
 // Definicja tras nawigacji
@@ -25,8 +28,7 @@ sealed class Destination(
     val icon: ImageVector
 ) {
     object Main : Destination("main", "Główny", Icons.Default.Home)
-    object AddReceipt : Destination("add_receipt", "Paragon", Icons.Default.AddAPhoto)
-    object AddReceiptv2 : Destination("add_receipt", "Paragon", Icons.Default.AddAPhoto)
+    object AddReceipt : Destination("add_receipt", "Skaner", Icons.Default.AddAPhoto)
     object Reports : Destination("reports", "Raporty", Icons.Default.BarChart)
     object Settings : Destination("settings", "Ustawienia", Icons.Default.Settings)
 }
@@ -39,8 +41,7 @@ fun AppNavigation() {
         Destination.Main,
         Destination.AddReceipt,
         Destination.Reports,
-        Destination.Settings,
-        Destination.AddReceiptv2
+        Destination.Settings
     )
 
     Scaffold(
@@ -63,7 +64,22 @@ fun AppNavigation() {
                 AddReceiptScreen()
             }
             composable(Destination.Reports.route) {
-                ReportsScreen()
+                val reportsViewModel: ReportsViewModel = hiltViewModel()
+                ReportsScreen(
+                    viewModel = reportsViewModel,
+                    onSeeAllCategoriesClick = {
+                        navController.navigate("all_categories")
+                    }
+                )
+            }
+            composable("all_categories") {
+                val reportsViewModel: ReportsViewModel = hiltViewModel()
+                AllCategoriesScreen(
+                    viewModel = reportsViewModel,
+                    onBackClick = {
+                        navController.popBackStack()
+                    }
+                )
             }
             composable(Destination.Settings.route) {
                 SettingsScreen()

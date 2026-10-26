@@ -62,6 +62,9 @@ dependencies {
     ksp(libs.hilt.compiler)                                          // NOWE
     implementation(libs.androidx.hilt.navigation.compose)            // NOWE – hiltViewModel()
 
+    // Google ML Kit Text Recognition (OCR na telefonie)
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
+
     // OkHttp
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 

@@ -15,6 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.expense_tracker.ui.main.MainScreen
+import com.example.expense_tracker.ui.main.MainViewModel
 import com.example.expense_tracker.ui.receipt.AddReceiptScreen
 import com.example.expense_tracker.ui.reports.AllCategoriesScreen
 import com.example.expense_tracker.ui.reports.ReportsScreen
@@ -58,7 +59,11 @@ fun AppNavigation() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Destination.Main.route) {
-                MainScreen()
+                val mainViewModel: MainViewModel = hiltViewModel()
+                MainScreen(
+                    viewModel = mainViewModel,
+                    contentPadding = innerPadding
+                )
             }
             composable(Destination.AddReceipt.route) {
                 AddReceiptScreen()

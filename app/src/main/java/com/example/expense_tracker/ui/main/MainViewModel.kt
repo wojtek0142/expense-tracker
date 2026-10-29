@@ -9,10 +9,8 @@ import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 import androidx.lifecycle.viewModelScope
-import com.example.expense_tracker.data.repository.ReceiptRepository
-import kotlinx.coroutines.delay
+import com.example.expense_tracker.data.repository.BudgetRepository
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 enum class IconType { FOOD, TRANSPORT, SHOPPING, HOME, SUBSCRIPTION, PHONE }
 data class BudgetState(
@@ -47,7 +45,7 @@ data class Transaction(
 )
 
 data class MainScreenState(
-    val userName: String = "Aniu",
+    val userName: String = "user",
     val budget: BudgetState = BudgetState(),
     val recentTransactions: List<Transaction> = emptyList(),
     val upcomingPayments: List<UpcomingPayment> = emptyList(),
@@ -60,7 +58,7 @@ data class MainScreenState(
 )
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val repository: ReceiptRepository
+    private val BudgetRepository: BudgetRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainScreenState(isLoading = true))

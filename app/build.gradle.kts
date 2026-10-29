@@ -72,6 +72,10 @@ dependencies {
     implementation(libs.androidx.coordinatorlayout)
     implementation(libs.material)
 
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
     // Testy
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

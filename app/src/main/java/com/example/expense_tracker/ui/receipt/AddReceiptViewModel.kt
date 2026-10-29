@@ -2,7 +2,6 @@ package com.example.expense_tracker.ui.receipt
 
 import android.net.Uri
 import androidx.lifecycle.ViewModel
-import com.example.expense_tracker.data.repository.ReceiptRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +16,6 @@ data class AddReceiptUiState(
 
 @HiltViewModel
 class AddReceiptViewModel @Inject constructor(
-    private val receiptRepository: ReceiptRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AddReceiptUiState())
     val uiState: StateFlow<AddReceiptUiState> = _uiState.asStateFlow()

@@ -161,7 +161,7 @@ fun HeaderSection(userName: String) {
 @Composable
 fun BudgetCard(budget: BudgetState) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = DarkGreen),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(24.dp),
         modifier = Modifier.fillMaxWidth()
     ) {

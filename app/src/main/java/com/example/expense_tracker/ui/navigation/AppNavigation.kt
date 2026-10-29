@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -17,6 +18,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.expense_tracker.ui.main.MainScreen
 import com.example.expense_tracker.ui.main.MainViewModel
 import com.example.expense_tracker.ui.receipt.AddReceiptScreen
+import com.example.expense_tracker.ui.expense.AddExpenseScreen
+import com.example.expense_tracker.ui.expense.AddExpenseViewModel
 import com.example.expense_tracker.ui.reports.AllCategoriesScreen
 import com.example.expense_tracker.ui.reports.ReportsScreen
 import com.example.expense_tracker.ui.reports.ReportsViewModel
@@ -30,8 +33,10 @@ sealed class Destination(
 ) {
     object Main : Destination("main", "Główny", Icons.Default.Home)
     object AddReceipt : Destination("add_receipt", "Skaner", Icons.Default.AddAPhoto)
+    object AddExpense : Destination("add_expense", "Wydatek", Icons.Default.Add)
     object Reports : Destination("reports", "Raporty", Icons.Default.BarChart)
     object Settings : Destination("settings", "Ustawienia", Icons.Default.Settings)
+
 }
 
 @Composable
@@ -41,6 +46,7 @@ fun AppNavigation() {
     val bottomBarItems = listOf(
         Destination.Main,
         Destination.AddReceipt,
+        Destination.AddExpense,
         Destination.Reports,
         Destination.Settings
     )
@@ -67,6 +73,13 @@ fun AppNavigation() {
             }
             composable(Destination.AddReceipt.route) {
                 AddReceiptScreen()
+            }
+            composable(Destination.AddExpense.route) {
+                val addExpenseViewModel: AddExpenseViewModel = hiltViewModel()
+                AddExpenseScreen(
+                    viewModel = addExpenseViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
             composable(Destination.Reports.route) {
                 val reportsViewModel: ReportsViewModel = hiltViewModel()

@@ -195,6 +195,20 @@ interface AppDao {
         endDate: Long
     ): Flow<Int>
 
+    // zwraca kwote wydatkow
+    @Query("""
+        SELECT SUM(amount) FROM expenses
+        WHERE user_id = :userId
+          AND date >= :startDate
+          AND date < :endDate
+          AND deletedAt IS NULL
+    """)
+    fun observeExpenseAmountForRange(
+        userId: String,
+        startDate: Long,
+        endDate: Long
+    ): Flow<Long>
+
     @Query("""
     SELECT * FROM expenses
     WHERE user_id = :userId

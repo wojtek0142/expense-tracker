@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
-
+import kotlinx.coroutines.flow.map
 import androidx.lifecycle.viewModelScope
 import com.example.expense_tracker.data.repository.BudgetRepository
 import com.example.expense_tracker.data.repository.ExpenseRepository
@@ -24,13 +24,13 @@ import kotlinx.coroutines.flow.onStart
 
 enum class IconType { FOOD, TRANSPORT, SHOPPING, HOME, SUBSCRIPTION, PHONE }
 data class BudgetState(
-    val remaining: Double = 1819.80,
+    val remaining: Double = 0.0,
     val totalBudget: Double = 4200.00,
-    val spent: Double = 2380.20,
-    val daysLeft: Int = 11,
-    val dailyAverage: Double = 85.00,
-    val canSpendDaily: Double = 145.00,
-    val percentageUsed: Int = 87
+    val spent: Double = 0.0,
+    val daysLeft: Int = 0,
+    val dailyAverage: Double = 0.0,
+    val canSpendDaily: Double = 0.0,
+    val percentageUsed: Int = 0,
 )
 
 data class UpcomingPayment(
@@ -92,8 +92,24 @@ class MainViewModel @Inject constructor(
             initialValue = 0
         )
 
+    private val monthlyExpenseAmount: StateFlow<Long> = _userId
+        .filterNotNull()
+        .flatMapLatest { userId ->
+            expenseRepository.observeExpenseAmountFromMonthStart(userId)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(0),
+            initialValue = 0L
+        )
+
+    private val monthlyExpenseAmountZloty: StateFlow<Double> = monthlyExpenseAmount
+        .map { it / 100.0 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0.0)
+
     init {
         loadData()
+        observeMonthlyAmount()
     }
 
     fun loadData() {
@@ -135,6 +151,31 @@ class MainViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(isLoading = false, errorMessage = "Błąd: ${e.message}")
+                }
+            }
+        }
+    }
+    private fun observeMonthlyAmount() {
+        viewModelScope.launch {
+            monthlyExpenseAmount.collect { totalInGrosze ->
+                val totalInZloty = totalInGrosze / 100.0
+
+                _uiState.update { currentState ->
+                    val budget = currentState.budget
+                    val totalBudget = budget.totalBudget
+
+                    val remaining = (totalBudget - totalInZloty).coerceAtLeast(0.0)
+                    val percentageUsed = if (totalBudget > 0) {
+                        ((totalInZloty / totalBudget) * 100).toInt().coerceIn(0, 100)
+                    } else 0
+
+                    currentState.copy(
+                        budget = budget.copy(
+                            spent = totalInZloty,          // <-- DODANE
+                            remaining = remaining,
+                            percentageUsed = percentageUsed,
+                        )
+                    )
                 }
             }
         }

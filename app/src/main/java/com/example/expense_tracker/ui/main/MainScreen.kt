@@ -48,6 +48,7 @@ fun MainScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -195,13 +196,6 @@ fun BudgetCard(budget: BudgetState) {
                     fontSize = 36.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Text(
-                    text = " zł",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 20.sp,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                    fontWeight = FontWeight.Bold
-                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -213,19 +207,24 @@ fun BudgetCard(budget: BudgetState) {
                     .clip(RoundedCornerShape(4.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
+                val progress = (budget.percentageUsed / 100f).coerceIn(0f, 1f)
                 Row(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier
-                            .weight(0.7f)
-                            .fillMaxHeight()
-                            .background(RedAlert)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .weight(0.3f)
-                            .fillMaxHeight()
-                            .background(AccentGreen)
-                    )
+                    if (progress > 0f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(progress)
+                                .fillMaxHeight()
+                                .background(RedAlert)
+                        )
+                    }
+                    if (progress < 1f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f - progress)
+                                .fillMaxHeight()
+                                .background(AccentGreen)
+                        )
+                    }
                 }
             }
 
@@ -236,7 +235,7 @@ fun BudgetCard(budget: BudgetState) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Wydano ${String.format("%.2f", budget.spent)} zł",
+                    text = "Wydano ${budget.spent} zł",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp
                 )

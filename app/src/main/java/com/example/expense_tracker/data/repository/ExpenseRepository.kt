@@ -94,6 +94,11 @@ class ExpenseRepository @Inject constructor(
             .map { it.toDomain() }
     }
 
+    fun observeExpenseAmountFromMonthStart(userId: String): Flow<Long> {
+        val (start, end) = currentMonthRange()
+        return appDao.observeExpenseAmountForRange(userId, start, end)
+    }
+
     fun observeExpenseCountFromMonthStart(userId: String): Flow<Int> {
         val (start, end) = currentMonthRange()
         Log.d("CountDebug", "Zakres: $start – $end")

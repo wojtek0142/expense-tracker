@@ -44,8 +44,11 @@ class CategoryRepository @Inject constructor(
         )
     }
 
-    suspend fun getUnsyncedCategories(userId: String) =
-        appDao.getUnsyncedCategories(userId)
+    suspend fun findBuiltinCategoryByName(name: String): Category? =
+        appDao.findBuiltinCategoryByName(name)?.toDomain()
+
+    suspend fun findUserCategoryByName(userId: String, name: String): Category? =
+        appDao.findUserCategoryByName(userId, name)?.toDomain()
 
     suspend fun markCategorySynced(
         id: String,

@@ -4,7 +4,6 @@ package com.example.expense_tracker.ui.expense
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,31 +11,40 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
+import com.example.expense_tracker.data.local.datastore.SessionManager
+import com.example.expense_tracker.data.repository.ExpenseRepository
+import com.example.expense_tracker.data.repository.ProductRepository
+import com.example.expense_tracker.data.repository.CategoryRepository
+import com.example.expense_tracker.domain.model.Category
+import com.example.expense_tracker.domain.model.Expense
+import com.example.expense_tracker.domain.model.Product
+import java.text.SimpleDateFormat
+import java.util.Locale
 
-enum class ExpenseType {
-    FIXED,
-    CASH
-}
 
 // Jeden wydatek na liście podglądowej
 data class PendingExpense(
     val id: String = UUID.randomUUID().toString(),
     val amount: String,
+    val quantity: Int = 1,
     val title: String,
     val date: String,
     val category: String,
-    val expenseType: ExpenseType,
-    val note: String
-)
+    val productId: String? = null,   // null → utwórz produkt
+    val categoryId: String? = null   // null → utwórz/użyj "Bez kategorii"
+) {
+    val totalAmount: Double
+        get() = (amount.replace(',', '.').toDoubleOrNull() ?: 0.0) * quantity
+}
 
 // Stan ekranu
 data class AddExpenseUiState(
     val amount: String = "",
     val title: String = "",
-    val date: String = "24.10.2024",
+    val quantity: Int = 1,
+    val date: String = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.getDefault())
+        .format(java.util.Date()),
     val category: String = "",
-    val expenseType: ExpenseType = ExpenseType.FIXED,
-    val note: String = "",
     val pendingExpenses: List<PendingExpense> = emptyList(),
     val isLoading: Boolean = false,
     val isSaved: Boolean = false,
@@ -44,7 +52,13 @@ data class AddExpenseUiState(
 )
 
 @HiltViewModel
-class AddExpenseViewModel @Inject constructor() : ViewModel() {
+class AddExpenseViewModel @Inject constructor(
+    private val expenseRepository: ExpenseRepository,
+    private val productRepository: ProductRepository,
+    private val categoryRepository: CategoryRepository,
+    private val sessionManager: SessionManager
+) : ViewModel() {
+
 
     private val _uiState = MutableStateFlow(AddExpenseUiState())
     val uiState: StateFlow<AddExpenseUiState> = _uiState.asStateFlow()
@@ -71,13 +85,6 @@ class AddExpenseViewModel @Inject constructor() : ViewModel() {
         _uiState.update { it.copy(category = newCategory) }
     }
 
-    fun onExpenseTypeChange(type: ExpenseType) {
-        _uiState.update { it.copy(expenseType = type) }
-    }
-
-    fun onNoteChange(newNote: String) {
-        _uiState.update { it.copy(note = newNote) }
-    }
 
     // Dodaje bieżący formularz do listy podglądowej.
     // Nie zapisuje jeszcze danych do bazy.
@@ -85,31 +92,25 @@ class AddExpenseViewModel @Inject constructor() : ViewModel() {
         val state = _uiState.value
 
         val title = state.title.trim()
-        val normalizedAmount = state.amount
-            .replace(',', '.')
+        val normalizedAmount = state.amount.replace(',', '.')
         val amountValue = normalizedAmount.toDoubleOrNull()
 
         if (title.isBlank()) {
-            _uiState.update {
-                it.copy(errorMessage = "Podaj nazwę wydatku.")
-            }
+            _uiState.update { it.copy(errorMessage = "Podaj nazwę wydatku.") }
             return
         }
 
         if (amountValue == null || !amountValue.isFinite() || amountValue <= 0.0) {
-            _uiState.update {
-                it.copy(errorMessage = "Podaj poprawną kwotę większą od zera.")
-            }
+            _uiState.update { it.copy(errorMessage = "Podaj poprawną kwotę większą od zera.") }
             return
         }
 
         val expense = PendingExpense(
-            amount = normalizedAmount,
+            amount = state.amount,          // String — zachowujemy format z przecinkiem
+            quantity = state.quantity,
             title = title,
             date = state.date,
             category = state.category.ifBlank { "Bez kategorii" },
-            expenseType = state.expenseType,
-            note = state.note.trim()
         )
 
         _uiState.update {
@@ -117,10 +118,14 @@ class AddExpenseViewModel @Inject constructor() : ViewModel() {
                 pendingExpenses = it.pendingExpenses + expense,
                 amount = "",
                 title = "",
-                note = "",
+                quantity = 1,
                 errorMessage = null
             )
         }
+    }
+
+    fun onQuantityChange(newQuantity: Int) {
+        _uiState.update { it.copy(quantity = newQuantity.coerceAtLeast(1)) }
     }
 
     // Usuwa element z listy podglądowej.
@@ -141,26 +146,111 @@ class AddExpenseViewModel @Inject constructor() : ViewModel() {
         val state = _uiState.value
 
         if (state.pendingExpenses.isEmpty()) {
-            _uiState.update {
-                it.copy(errorMessage = "Dodaj przynajmniej jeden wydatek.")
-            }
+            _uiState.update { it.copy(errorMessage = "Dodaj przynajmniej jeden wydatek.") }
             return
         }
 
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(isLoading = true, errorMessage = null)
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+
+            val userId = sessionManager.getUserId()
+            if (userId == null) {
+                _uiState.update {
+                    it.copy(isLoading = false, errorMessage = "Brak zalogowanego użytkownika.")
+                }
+                return@launch
             }
 
-            // Tymczasowa symulacja. Nie zapisuje do Room.
-            delay(500)
+            try {
+                val now = System.currentTimeMillis()
+                val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
 
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    isSaved = true
-                )
+                val expenses = state.pendingExpenses.map { pending ->
+                    val productId = resolveProductId(userId, pending, now)
+
+                    Expense(
+                        id = pending.id,
+                        productId = productId,
+                        userId = userId,
+                        quantity = pending.quantity.toDouble(),
+                        amount = Math.round(pending.totalAmount * 100), // grosze
+                        date = runCatching {
+                            dateFormat.parse(pending.date)?.time
+                        }.getOrNull() ?: now,
+                        createdAt = now,
+                        updatedAt = now,
+                        deletedAt = null
+                    )
+                }
+
+                expenseRepository.addExpenses(expenses)
+
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isSaved = true,
+                        pendingExpenses = emptyList(),
+                        errorMessage = null
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Nie udało się zapisać wydatków: ${e.message}"
+                    )
+                }
             }
         }
+    }
+
+    private suspend fun resolveProductId(
+        userId: String,
+        pending: PendingExpense,
+        now: Long
+    ): String {
+        pending.productId?.let { return it }
+
+        val nameKey = pending.title.lowercase(Locale.getDefault())
+
+        productRepository.findProductByName(userId, nameKey)?.let { return it.id }
+
+        val categoryId = resolveCategoryId(userId, pending.category, now)
+
+        val newProduct = Product(
+            id = UUID.randomUUID().toString(),
+            name = pending.title,
+            nameKey = nameKey,
+            userId = userId,
+            categoryId = categoryId,
+            createdAt = now,
+            updatedAt = now,
+            deletedAt = null
+        )
+        productRepository.addProduct(newProduct)
+        return newProduct.id
+    }
+
+    private suspend fun resolveCategoryId(
+        userId: String,
+        categoryName: String,
+        now: Long
+    ): String {
+        val name = categoryName.ifBlank { "Bez kategorii" }
+
+        categoryRepository.findBuiltinCategoryByName(name)?.let { return it.id }
+        categoryRepository.findUserCategoryByName(userId, name)?.let { return it.id }
+
+        val newCategory = Category(
+            id = UUID.randomUUID().toString(),
+            name = name,
+            isBuiltin = false,
+            userId = userId,
+            createdAt = now,
+            updatedAt = now,
+            deletedAt = null
+        )
+        categoryRepository.addCategory(newCategory)
+        return newCategory.id
     }
 }

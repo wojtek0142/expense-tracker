@@ -70,6 +70,7 @@ fun MainScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val count by viewModel.monthlyExpenseCount.collectAsStateWithLifecycle()
                 Text(
                     text = "Ostatnie wydatki",
                     style = MaterialTheme.typography.titleMedium,
@@ -77,7 +78,7 @@ fun MainScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "23 transakcje w tym miesiącu",
+                    text = "W tym miesiącu: $count wydatków",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

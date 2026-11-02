@@ -58,6 +58,12 @@ class ProductRepository @Inject constructor(
         )
     }
 
+    suspend fun findProductByName(
+        userId: String,
+        nameKey: String
+    ): Product? =
+        appDao.findProductByName(userId, nameKey)?.toDomain()
+
     suspend fun getUnsyncedProducts(userId: String) =
         appDao.getUnsyncedProducts(userId)
 

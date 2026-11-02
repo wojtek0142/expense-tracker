@@ -1,5 +1,6 @@
 package com.example.expense_tracker.ui.main
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,7 +11,16 @@ import javax.inject.Inject
 
 import androidx.lifecycle.viewModelScope
 import com.example.expense_tracker.data.repository.BudgetRepository
+import com.example.expense_tracker.data.repository.ExpenseRepository
 import kotlinx.coroutines.launch
+import com.example.expense_tracker.data.local.datastore.SessionManager
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 
 enum class IconType { FOOD, TRANSPORT, SHOPPING, HOME, SUBSCRIPTION, PHONE }
 data class BudgetState(
@@ -58,11 +68,29 @@ data class MainScreenState(
 )
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val BudgetRepository: BudgetRepository
+    private val BudgetRepository: BudgetRepository,
+    private val expenseRepository: ExpenseRepository,
+    private val sessionManager: SessionManager,
 ) : ViewModel() {
 
+    private val _userId = MutableStateFlow<String?>(null)
     private val _uiState = MutableStateFlow(MainScreenState(isLoading = true))
     val uiState: StateFlow<MainScreenState> = _uiState.asStateFlow()
+    val monthlyExpenseCount: StateFlow<Int> = _userId
+        .filterNotNull()
+        .flatMapLatest { userId ->
+            Log.d("CountDebug", "flatMapLatest START dla userId=$userId")
+            expenseRepository.observeExpenseCountFromMonthStart(userId)
+                .onEach { Log.d("CountDebug", "Emisja z repo: $it") }
+                .onCompletion { Log.d("CountDebug", "Flow repo zakończony") }
+        }
+        .onStart { Log.d("CountDebug", "stateIn upstream START") }
+        .onCompletion { Log.d("CountDebug", "stateIn upstream ZAKOŃCZONY") }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(0),
+            initialValue = 0
+        )
 
     init {
         loadData()
@@ -70,25 +98,44 @@ class MainViewModel @Inject constructor(
 
     fun loadData() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            _uiState.update { it.copy(isLoading = true, errorMessage = null)}
-            val transactions = listOf(
-                Transaction("1", "Bistro Zielnik", "Jedzenie", "Dzisiaj", 64.50, IconType.FOOD),
-                Transaction("2", "Bolt", "Transport", "Dzisiaj", 24.80, IconType.TRANSPORT),
-                Transaction("3", "Allegro", "Zakupy", "Wczoraj", 129.00, IconType.SHOPPING)
-            )
+            try {
+                val userId = sessionManager.getUserId()
+                if (userId == null) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = "Brak zalogowanego użytkownika."
+                        )
+                    }
+                    return@launch
+                }
+                _userId.value = userId
 
-            val payments = listOf(
-                UpcomingPayment("1", "Czynsz", 2050.00, "25 PAŹ", "Co miesiąc", "Jutro", true),
-                UpcomingPayment("2", "Netflix", 43.00, "27 PAŹ", "Co miesiąc", "Za 3 dni"),
-                UpcomingPayment("3", "Telefon", 141.99, "29 PAŹ", "Co miesiąc", "Za 5 dni")
-            )
-
-            _uiState.update { currentState ->
-                currentState.copy(
-                    recentTransactions = transactions,
-                    upcomingPayments = payments
+                // Przykładowe dane — do podmiany na dane z repo
+                val transactions = listOf(
+                    Transaction("1", "Bistro Zielnik", "Jedzenie", "Dzisiaj", 64.50, IconType.FOOD),
+                    Transaction("2", "Bolt", "Transport", "Dzisiaj", 24.80, IconType.TRANSPORT),
+                    Transaction("3", "Allegro", "Zakupy", "Wczoraj", 129.00, IconType.SHOPPING)
                 )
+                val payments = listOf(
+                    UpcomingPayment("1", "Czynsz", 2050.00, "25 PAŹ", "Co miesiąc", "Jutro", true),
+                    UpcomingPayment("2", "Netflix", 43.00, "27 PAŹ", "Co miesiąc", "Za 3 dni"),
+                    UpcomingPayment("3", "Telefon", 141.99, "29 PAŹ", "Co miesiąc", "Za 5 dni")
+                )
+
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,             // <-- DODANE
+                        recentTransactions = transactions,
+                        upcomingPayments = payments
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(isLoading = false, errorMessage = "Błąd: ${e.message}")
+                }
             }
         }
     }

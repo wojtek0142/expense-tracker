@@ -34,10 +34,12 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
 dependencies {
+    implementation(libs.androidx.datastore.preferences)
     // Compose BOM
     implementation(platform(libs.androidx.compose.bom))
 

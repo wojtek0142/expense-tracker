@@ -34,7 +34,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun AddExpenseScreen(
@@ -117,6 +118,13 @@ fun AddExpenseScreen(
                 leadingIcon = Icons.Outlined.EditNote
             )
 
+            // 2a. Ilość
+            InputLabel("Ilość")
+            QuantitySelector(
+                quantity = uiState.quantity,
+                onQuantityChange = viewModel::onQuantityChange
+            )
+
             // 3. Data i Kategoria (Row)
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -145,25 +153,6 @@ fun AddExpenseScreen(
                 }
             }
 
-            // 4. Typ wydatku (Przyciski)
-            InputLabel("typ wydatku")
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                ExpenseTypeButton(
-                    text = "jednorazowy",
-                    isSelected = uiState.expenseType == ExpenseType.FIXED,
-                    onClick = { viewModel.onExpenseTypeChange(ExpenseType.FIXED) },
-                    modifier = Modifier.weight(1f)
-                )
-                ExpenseTypeButton(
-                    text = "okresowy",
-                    isSelected = uiState.expenseType == ExpenseType.CASH,
-                    onClick = { viewModel.onExpenseTypeChange(ExpenseType.CASH) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
 
             Button(
                 onClick = viewModel::addExpenseToList,
@@ -202,7 +191,6 @@ fun AddExpenseScreen(
 
 
 
-            // 5. Notatka
             InputLabel("Wydatki do zapisania")
 
             uiState.errorMessage?.let { message ->
@@ -233,24 +221,16 @@ fun AddExpenseScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
 
+                            // Kwota z uwzględnieniem ilości
                             Text(
-                                text = "${expense.amount} zł • ${expense.category}",
+                                text = if (expense.quantity > 1) {
+                                    "${expense.amount} zł × ${expense.quantity} = " +
+                                            String.format("%.2f", expense.totalAmount) + " zł • ${expense.category}"
+                                } else {
+                                    "${expense.amount} zł • ${expense.category}"
+                                },
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-
-                            Text(
-                                text = "${expense.date} • ${expense.expenseType}",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 12.sp
-                            )
-
-                            if (expense.note.isNotBlank()) {
-                                Text(
-                                    text = expense.note,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 12.sp
-                                )
-                            }
                         }
 
                         IconButton(
@@ -265,57 +245,6 @@ fun AddExpenseScreen(
                             )
                         }
                     }
-                }
-            }
-
-// Pole do wpisywania nowej pozycji
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = newItem,
-                    onValueChange = { newItem = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = {
-                        Text(
-                            "Np. chleb, mleko...",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        cursorColor = MaterialTheme.colorScheme.primary
-                    )
-                )
-
-                IconButton(
-                    onClick = {
-                        val item = newItem.trim()
-
-                        if (item.isNotEmpty()) {
-                            expenseItems.add(item)
-                            newItem = ""
-                        }
-                    },
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Dodaj pozycję",
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
                 }
             }
 
@@ -529,5 +458,94 @@ fun ExpenseTypeButton(
             color = textColor,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
+    }
+}
+
+@Composable
+fun QuantitySelector(
+    quantity: Int,
+    onQuantityChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Przycisk "-"
+        IconButton(
+            onClick = { if (quantity > 1) onQuantityChange(quantity - 1) },
+            enabled = quantity > 1,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(
+                    if (quantity > 1) MaterialTheme.colorScheme.surfaceContainerHighest
+                    else MaterialTheme.colorScheme.surfaceContainerHigh
+                )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Remove,
+                contentDescription = "Zmniejsz ilość",
+                tint = if (quantity > 1)
+                    MaterialTheme.colorScheme.onSurface
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            )
+        }
+
+        // Wartość ilości (edytowalna)
+        BasicTextField(
+            value = quantity.toString(),
+            onValueChange = { input ->
+                val filtered = input.filter { it.isDigit() }
+                if (filtered.isEmpty()) {
+                    onQuantityChange(1)
+                } else {
+                    filtered.toIntOrNull()?.let { onQuantityChange(it.coerceAtLeast(1)) }
+                }
+            },
+            textStyle = androidx.compose.ui.text.TextStyle(
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            ),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 8.dp),
+            decorationBox = { innerTextField ->
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                    innerTextField()
+                }
+            }
+        )
+
+        // Przycisk "+"
+        IconButton(
+            onClick = { onQuantityChange(quantity + 1) },
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Zwiększ ilość",
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
     }
 }

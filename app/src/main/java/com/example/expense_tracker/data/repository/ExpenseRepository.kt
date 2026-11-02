@@ -1,5 +1,6 @@
 package com.example.expense_tracker.data.repository
 
+import android.util.Log
 import com.example.expense_tracker.data.local.dao.AppDao
 import com.example.expense_tracker.data.mapper.toDomain
 import com.example.expense_tracker.data.mapper.toEntity
@@ -7,7 +8,7 @@ import com.example.expense_tracker.domain.model.Expense
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-
+import kotlinx.coroutines.flow.onEach
 class ExpenseRepository @Inject constructor(
     private val appDao: AppDao
 ) {
@@ -83,4 +84,44 @@ class ExpenseRepository @Inject constructor(
             expectedUpdatedAt = expectedUpdatedAt
         )
     }
+    suspend fun getExpensesForMonth(
+        userId: String,
+        year: Int,
+        month: Int
+    ): List<Expense> {
+        val (startDate, endDate) = monthRange(year, month)
+        return appDao.getExpensesForMonth(userId, startDate, endDate)
+            .map { it.toDomain() }
+    }
+
+    fun observeExpenseCountFromMonthStart(userId: String): Flow<Int> {
+        val (start, end) = currentMonthRange()
+        Log.d("CountDebug", "Zakres: $start – $end")
+        return appDao.observeExpenseCountForRange(userId, start, end)
+            .onEach { Log.d("CountDebug", "DAO COUNT = $it") }
+    }
+
+    private fun currentMonthRange(): Pair<Long, Long> {
+        val cal = java.util.Calendar.getInstance().apply {
+            clear()
+            set(
+                java.util.Calendar.getInstance().get(java.util.Calendar.YEAR),
+                java.util.Calendar.getInstance().get(java.util.Calendar.MONTH),
+                1, 0, 0, 0
+            )
+        }
+        val start = cal.timeInMillis
+        cal.add(java.util.Calendar.MONTH, 1)
+        return start to cal.timeInMillis
+    }
+}
+
+private fun monthRange(year: Int, month: Int): Pair<Long, Long> {
+    val calendar = java.util.Calendar.getInstance().apply {
+        clear()
+        set(year, month - 1, 1, 0, 0, 0)
+    }
+    val start = calendar.timeInMillis
+    calendar.add(java.util.Calendar.MONTH, 1)
+    return start to calendar.timeInMillis
 }

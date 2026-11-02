@@ -29,8 +29,8 @@ interface AppDao {
     @Update
     suspend fun updateUser(user: UserEntity)
 
-    @Query("SELECT * FROM users WHERE id = :userId")
-    suspend fun getUserById(userId: String): UserEntity?
+    @Query("SELECT * FROM users WHERE id = :id LIMIT 1")
+    suspend fun getUserById(id: String): UserEntity?
 
     // ==========================================
     // CATEGORIES
@@ -180,6 +180,34 @@ interface AppDao {
     // ==========================================
     // EXPENSES
     // ==========================================
+
+    // zwraca ilosc wydatkow
+        @Query("""
+        SELECT COUNT(*) FROM expenses
+        WHERE user_id = :userId
+          AND date >= :startDate
+          AND date < :endDate
+          AND deletedAt IS NULL
+    """)
+    fun observeExpenseCountForRange(
+        userId: String,
+        startDate: Long,
+        endDate: Long
+    ): Flow<Int>
+
+    @Query("""
+    SELECT * FROM expenses
+    WHERE user_id = :userId
+      AND date >= :startDate
+      AND date < :endDate
+      AND deletedAt IS NULL
+    ORDER BY date DESC
+""")
+    suspend fun getExpensesForMonth(
+        userId: String,
+        startDate: Long,
+        endDate: Long
+    ): List<ExpenseEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExpense(expense: ExpenseEntity)
@@ -391,6 +419,18 @@ interface AppDao {
         userId: String,
         month: String
     )
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(expenses: List<ExpenseEntity>)
+
+    @Query("SELECT * FROM products WHERE user_id = :userId AND name_key = :nameKey AND deletedAt IS NULL LIMIT 1")
+    suspend fun findProductByName(userId: String, nameKey: String): ProductEntity?
+
+    @Query("SELECT * FROM categories WHERE name = :name AND is_builtin = 1 LIMIT 1")
+    suspend fun findBuiltinCategoryByName(name: String): CategoryEntity?
+
+    @Query("SELECT * FROM categories WHERE user_id = :userId AND name = :name AND deletedAt IS NULL LIMIT 1")
+    suspend fun findUserCategoryByName(userId: String, name: String): CategoryEntity?
+
 }
 
 data class CategoryTotal(

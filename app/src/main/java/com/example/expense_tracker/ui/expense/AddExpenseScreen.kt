@@ -35,11 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 
-// Kolory z designu
-val DarkGreen = Color(0xFF1B4332)
-val LightGreen = Color(0xFFD4E88C)
-val BackgroundLight = Color(0xFFF9FBF2)
-val TextGray = Color(0xFF6B7280)
 
 @Composable
 fun AddExpenseScreen(
@@ -73,13 +68,13 @@ fun AddExpenseScreen(
                         text = "NOWA TRANSAKCJA",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextGray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "Dodaj wydatek",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
 
@@ -88,9 +83,13 @@ fun AddExpenseScreen(
                     onClick = onNavigateBack,
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color.White, RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(12.dp))
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "Zamknij")
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Zamknij",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -171,18 +170,30 @@ fun AddExpenseScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = LightGreen),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
                 shape = RoundedCornerShape(16.dp),
                 enabled = !uiState.isLoading
             ) {
                 if (uiState.isLoading) {
-                    CircularProgressIndicator(color = DarkGreen, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp)
+                    )
                 } else {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = DarkGreen)
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Dodaj wydatek",
-                        color = DarkGreen,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
@@ -211,31 +222,32 @@ fun AddExpenseScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = expense.title,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
 
                             Text(
                                 text = "${expense.amount} zł • ${expense.category}",
-                                color = TextGray
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
                             Text(
                                 text = "${expense.date} • ${expense.expenseType}",
-                                color = TextGray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp
                             )
 
                             if (expense.note.isNotBlank()) {
                                 Text(
                                     text = expense.note,
-                                    color = TextGray,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 12.sp
                                 )
                             }
@@ -249,7 +261,7 @@ fun AddExpenseScreen(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Usuń wydatek",
-                                tint = TextGray
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -267,15 +279,21 @@ fun AddExpenseScreen(
                     onValueChange = { newItem = it },
                     modifier = Modifier.weight(1f),
                     placeholder = {
-                        Text("Np. chleb, mleko...", color = Color.LightGray)
+                        Text(
+                            "Np. chleb, mleko...",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     },
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        focusedBorderColor = LightGreen,
-                        unfocusedBorderColor = Color.Transparent
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        cursorColor = MaterialTheme.colorScheme.primary
                     )
                 )
 
@@ -291,12 +309,12 @@ fun AddExpenseScreen(
                     modifier = Modifier
                         .size(52.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(LightGreen)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Dodaj pozycję",
-                        tint = DarkGreen
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
@@ -312,18 +330,30 @@ fun AddExpenseScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = LightGreen),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
                 shape = RoundedCornerShape(16.dp),
                 enabled = !uiState.isLoading
             ) {
                 if (uiState.isLoading) {
-                    CircularProgressIndicator(color = DarkGreen, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp)
+                    )
                 } else {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = DarkGreen)
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Zapisz wszystkie",
-                        color = DarkGreen,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
@@ -346,7 +376,10 @@ fun AmountCard(amount: String, onAmountChange: (String) -> Unit) {
             .clip(RoundedCornerShape(24.dp))
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF2D5A46), DarkGreen)
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialTheme.colorScheme.primary
+                    )
                 )
             )
             .padding(20.dp)
@@ -354,7 +387,7 @@ fun AmountCard(amount: String, onAmountChange: (String) -> Unit) {
         Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
             Text(
                 text = "Kwota wydatku",
-                color = Color.White.copy(alpha = 0.8f),
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
                 fontSize = 14.sp
             )
             Row(
@@ -366,7 +399,7 @@ fun AmountCard(amount: String, onAmountChange: (String) -> Unit) {
                     onValueChange = onAmountChange,
                     textStyle = androidx.compose.ui.text.TextStyle(
                         fontSize = 48.sp,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Medium
                     ),
                     keyboardOptions = KeyboardOptions(
@@ -378,7 +411,7 @@ fun AmountCard(amount: String, onAmountChange: (String) -> Unit) {
                             Text(
                                 text = "0,00",
                                 fontSize = 48.sp,
-                                color = Color.White.copy(alpha = 0.5f)
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
                             )
                         }
 
@@ -387,7 +420,7 @@ fun AmountCard(amount: String, onAmountChange: (String) -> Unit) {
                 )
                 Text(
                     text = "zł",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     fontSize = 20.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -402,7 +435,7 @@ fun InputLabel(text: String) {
         text = text,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
-        color = TextGray,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(bottom = 6.dp, start = 4.dp)
     )
 }
@@ -420,17 +453,41 @@ fun CustomTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text(placeholder, color = Color.LightGray) },
-        leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null, tint = Color.LightGray) } },
-        trailingIcon = trailingIcon?.let { { Icon(it, contentDescription = null, tint = Color.Gray) } },
+        placeholder = {
+            Text(
+                placeholder,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        leadingIcon = leadingIcon?.let {
+            {
+                Icon(
+                    it,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        trailingIcon = trailingIcon?.let {
+            {
+                Icon(
+                    it,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
         shape = RoundedCornerShape(12.dp),
         singleLine = true,
         readOnly = readOnly,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            focusedBorderColor = Color.Transparent,
-            unfocusedBorderColor = Color.Transparent
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+            cursorColor = MaterialTheme.colorScheme.primary
         )
     )
 }
@@ -442,9 +499,21 @@ fun ExpenseTypeButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val backgroundColor = if (isSelected) LightGreen else Color.White
-    val borderColor = if (isSelected) Color.Transparent else Color.LightGray.copy(alpha = 0.3f)
-    val textColor = if (isSelected) DarkGreen else TextGray
+    val backgroundColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val borderColor = if (isSelected) {
+        Color.Transparent
+    } else {
+        MaterialTheme.colorScheme.outlineVariant
+    }
+    val textColor = if (isSelected) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Box(
         modifier = modifier

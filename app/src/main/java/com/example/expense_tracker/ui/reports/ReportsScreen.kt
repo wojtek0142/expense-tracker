@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import java.util.Locale
+import androidx.compose.material3.IconButtonDefaults
 
 @Composable
 fun ReportsScreen(
@@ -70,6 +71,7 @@ private fun ReportsContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(scrollState)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -83,7 +85,8 @@ private fun ReportsContent(
                 Text(
                     text = "Raporty wydatków",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "Analiza i rozkład przepływów finansowych",
@@ -91,7 +94,13 @@ private fun ReportsContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            FilledTonalIconButton(onClick = { /* TODO: Filtry */ }) {
+            FilledTonalIconButton(
+                onClick = { /* TODO: Filtry */ },
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            ) {
                 Icon(
                     imageVector = Icons.Default.Tune,
                     contentDescription = "Otwórz filtry"
@@ -146,7 +155,7 @@ private fun ReportsContent(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                containerColor = MaterialTheme.colorScheme.primaryContainer
             )
         ) {
             Column(
@@ -156,14 +165,15 @@ private fun ReportsContent(
                     text = "ŁĄCZNIE W TYM $periodText",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
                     letterSpacing = 1.sp
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = state.currentPeriodTotal.pln(),
                     style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
@@ -172,13 +182,13 @@ private fun ReportsContent(
                     Icon(
                         imageVector = Icons.Default.History,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "$previousPeriodText: ${state.previousPeriodTotal.pln()}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
                 }
             }
@@ -188,7 +198,7 @@ private fun ReportsContent(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
             )
         ) {
             Column(
@@ -204,7 +214,8 @@ private fun ReportsContent(
                         Text(
                             text = "Struktura wydatków",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Icon(
@@ -266,7 +277,8 @@ private fun ReportsContent(
                         Text(
                             text = state.currentPeriodTotal.pln(),
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -311,12 +323,14 @@ private fun ReportsContent(
                     Text(
                         text = "3 główne kategorie",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = "wydatków",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Text(
                         text = "Stanowi ${state.topCategoriesPercentage}% łącznych kosztów",
@@ -347,7 +361,7 @@ private fun TopCategoryItem(category: CategoryReport) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         )
     ) {
         Column(
@@ -384,7 +398,8 @@ private fun TopCategoryItem(category: CategoryReport) {
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -396,7 +411,8 @@ private fun TopCategoryItem(category: CategoryReport) {
                         Text(
                             text = category.amount.pln(),
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "${category.percentage}% całości",
@@ -438,7 +454,7 @@ private fun LegendItem(category: CategoryReport) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Row(
@@ -461,14 +477,16 @@ private fun LegendItem(category: CategoryReport) {
                     text = category.name,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = "${category.percentage}%",
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

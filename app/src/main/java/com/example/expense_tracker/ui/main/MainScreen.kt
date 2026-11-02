@@ -10,9 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,9 +40,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.expense_tracker.ui.theme.*
 
-private val BudgetGreen = Color(0xFF4CAF50)
-private val BudgetRed   = Color(0xFFE53935)
-
 
 @Composable
 fun MainScreen(
@@ -57,14 +52,14 @@ fun MainScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
-            contentPadding = PaddingValues(
-                top = contentPadding.calculateTopPadding() + 16.dp,
-                bottom = contentPadding.calculateBottomPadding() + 32.dp,
-                start = 16.dp,
-                end = 16.dp
-            ),
+        contentPadding = PaddingValues(
+            top = contentPadding.calculateTopPadding() + 16.dp,
+            bottom = contentPadding.calculateBottomPadding() + 32.dp,
+            start = 16.dp,
+            end = 16.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
-    ){
+    ) {
         item { HeaderSection(state.userName) }
         item { BudgetCard(state.budget) }
         item { DailyStatsRow(state.budget) }
@@ -78,7 +73,8 @@ fun MainScreen(
                 Text(
                     text = "Ostatnie wydatki",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "23 transakcje w tym miesiącu",
@@ -99,7 +95,8 @@ fun MainScreen(
                 Text(
                     text = "Nadchodzące płatności",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "3 płatności w tym tygodniu",
@@ -143,7 +140,7 @@ fun HeaderSection(userName: String) {
         }
         Surface(
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             shadowElevation = 2.dp,
             modifier = Modifier.size(48.dp)
         ) {
@@ -161,7 +158,7 @@ fun HeaderSection(userName: String) {
 @Composable
 fun BudgetCard(budget: BudgetState) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         shape = RoundedCornerShape(24.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -172,13 +169,13 @@ fun BudgetCard(budget: BudgetState) {
             ) {
                 Text(
                     text = "Budżet • październik",
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelLarge
                 )
                 Icon(
                     imageVector = Icons.Default.MoreHoriz,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.7f)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -186,20 +183,20 @@ fun BudgetCard(budget: BudgetState) {
 
             Text(
                 text = "Pozostało do wykorzystania",
-                color = Color.White.copy(alpha = 0.8f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium
             )
 
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = String.format("%.2f", budget.remaining).replace('.', ','),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 36.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = " zł",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 20.sp,
                     modifier = Modifier.padding(bottom = 4.dp),
                     fontWeight = FontWeight.Bold
@@ -213,7 +210,7 @@ fun BudgetCard(budget: BudgetState) {
                     .fillMaxWidth()
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color.White.copy(alpha = 0.2f))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Box(
@@ -239,12 +236,12 @@ fun BudgetCard(budget: BudgetState) {
             ) {
                 Text(
                     text = "Wydano ${String.format("%.2f", budget.spent)} zł",
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp
                 )
                 Text(
                     text = "${budget.percentageUsed}%",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -253,7 +250,7 @@ fun BudgetCard(budget: BudgetState) {
             Spacer(modifier = Modifier.height(20.dp))
 
             Surface(
-                color = Color.White.copy(alpha = 0.1f),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
@@ -263,13 +260,13 @@ fun BudgetCard(budget: BudgetState) {
                     Box(
                         modifier = Modifier
                             .size(32.dp)
-                            .background(AccentGreen, CircleShape),
+                            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.Check,
                             contentDescription = null,
-                            tint = DarkGreen,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -277,13 +274,13 @@ fun BudgetCard(budget: BudgetState) {
                     Column {
                         Text(
                             text = "12% mniej niż miesiąc temu",
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "To o 324 zł mniej niż we wrześniu",
-                            color = Color.White.copy(alpha = 0.7f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
                         )
                     }
@@ -303,18 +300,18 @@ fun DailyStatsRow(budget: BudgetState) {
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Outlined.BarChart,
-            iconTint = Color(0xFFD84315),
-            iconBg = IconBackgroundOrange,
+            iconTint = MaterialTheme.colorScheme.onErrorContainer,
+            iconBg = MaterialTheme.colorScheme.errorContainer,
             title = "Średnio dziennie",
             value = "${String.format("%.2f", budget.dailyAverage).replace('.', ',')} zł",
             subtitle = "Prognoza: +200 zł ponad budżet",
-            subtitleColor = Color(0xFFD84315)
+            subtitleColor = MaterialTheme.colorScheme.error
         )
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Outlined.AccountBalanceWallet,
-            iconTint = Color(0xFF2E7D32),
-            iconBg = LightGreen,
+            iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
+            iconBg = MaterialTheme.colorScheme.secondaryContainer,
             title = "Możesz wydać",
             value = "${String.format("%.2f", budget.canSpendDaily).replace('.', ',')} zł",
             subtitle = "dziennie do końca miesiąca",
@@ -336,7 +333,7 @@ fun StatCard(
     subtitleColor: Color
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         shape = RoundedCornerShape(20.dp),
         modifier = modifier
     ) {
@@ -361,7 +358,7 @@ fun StatCard(
 @Composable
 fun TransactionsList(transactions: List<Transaction>) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         shape = RoundedCornerShape(24.dp)
     ) {
         Column {
@@ -370,7 +367,7 @@ fun TransactionsList(transactions: List<Transaction>) {
                 if (transaction != transactions.last()) {
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
-                        color = Color.LightGray.copy(alpha = 0.3f)
+                        color = MaterialTheme.colorScheme.outlineVariant
                     )
                 }
             }
@@ -387,10 +384,10 @@ fun TransactionRow(transaction: Transaction) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         val colors = when (transaction.iconType) {
-            IconType.FOOD -> IconBackgroundOrange to Color(0xFFD84315)
-            IconType.TRANSPORT -> IconBackgroundBlue to Color(0xFF1565C0)
-            IconType.SHOPPING -> IconBackgroundPurple to Color(0xFF6A1B9A)
-            else -> Color.LightGray to Color.DarkGray
+            IconType.FOOD -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+            IconType.TRANSPORT -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+            IconType.SHOPPING -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+            else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
         }
         val bgColor = colors.first
         val tint = colors.second
@@ -413,7 +410,12 @@ fun TransactionRow(transaction: Transaction) {
         Spacer(modifier = Modifier.width(16.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = transaction.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(
+                text = transaction.title,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Text(
                 text = "${transaction.category} • ${transaction.date}",
                 fontSize = 12.sp,
@@ -424,7 +426,8 @@ fun TransactionRow(transaction: Transaction) {
         Text(
             text = "- ${String.format("%.2f", transaction.amount).replace('.', ',')} zł",
             fontWeight = FontWeight.Bold,
-            fontSize = 14.sp
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.error
         )
     }
 }
@@ -434,7 +437,10 @@ fun TransactionRow(transaction: Transaction) {
 @Composable
 fun TopCategoryCard(state: MainScreenState) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = LightGreen),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
         shape = RoundedCornerShape(24.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -466,10 +472,14 @@ fun TopCategoryCard(state: MainScreenState) {
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(Color.White, CircleShape),
+                    .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Restaurant, contentDescription = null, tint = AccentGreen)
+                Icon(
+                    Icons.Default.Restaurant,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
             }
         }
     }
@@ -479,7 +489,7 @@ fun TopCategoryCard(state: MainScreenState) {
 @Composable
 fun UpcomingPaymentsList(payments: List<UpcomingPayment>) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         shape = RoundedCornerShape(24.dp)
     ) {
         Column {
@@ -488,13 +498,14 @@ fun UpcomingPaymentsList(payments: List<UpcomingPayment>) {
                 if (payment != payments.last()) {
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
-                        color = Color.LightGray.copy(alpha = 0.3f)
+                        color = MaterialTheme.colorScheme.outlineVariant
                     )
                 }
             }
         }
     }
 }
+
 // -- pojedynczy wpis w nadchodzacych platnosciach ---
 @Composable
 fun UpcomingPaymentRow(payment: UpcomingPayment) {
@@ -507,10 +518,15 @@ fun UpcomingPaymentRow(payment: UpcomingPayment) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            Text(text = payment.date.split(" ")[0], fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(
+                text = payment.date.split(" ")[0],
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Text(
                 text = payment.date.split(" ")[1],
                 fontSize = 10.sp,
@@ -521,7 +537,12 @@ fun UpcomingPaymentRow(payment: UpcomingPayment) {
         Spacer(modifier = Modifier.width(16.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = payment.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(
+                text = payment.title,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.Autorenew,
@@ -542,12 +563,13 @@ fun UpcomingPaymentRow(payment: UpcomingPayment) {
             Text(
                 text = "${String.format("%.2f", payment.amount).replace('.', ',')} zł",
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = payment.daysLeft,
                 fontSize = 11.sp,
-                color = if (payment.isUrgent) RedAlert else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (payment.isUrgent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -556,7 +578,7 @@ fun UpcomingPaymentRow(payment: UpcomingPayment) {
 @Composable
 fun OverduePaymentAlert() {
     Surface(
-        color = RedBackground,
+        color = MaterialTheme.colorScheme.errorContainer,
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -567,26 +589,26 @@ fun OverduePaymentAlert() {
             Icon(
                 imageVector = Icons.Default.Warning,
                 contentDescription = "Alert",
-                tint = RedAlert
+                tint = MaterialTheme.colorScheme.onErrorContainer
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Zaległa płatność",
                     fontWeight = FontWeight.Bold,
-                    color = RedAlert,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
                     fontSize = 12.sp
                 )
                 Text(
                     text = "Ubezpieczenie • 89 zł • 3 dni po terminie",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.75f),
                     fontSize = 12.sp
                 )
             }
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = RedAlert
+                tint = MaterialTheme.colorScheme.onErrorContainer
             )
         }
     }

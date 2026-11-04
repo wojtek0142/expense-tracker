@@ -11,7 +11,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.expense_tracker.data.local.datastore.SessionManager
-import com.example.expense_tracker.data.repository.CategoryRepository
 import com.example.expense_tracker.data.repository.ExpenseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,7 +64,6 @@ data class ReportsUiState(
 @HiltViewModel
 class ReportsViewModel @Inject constructor(
     private val expenseRepository: ExpenseRepository,
-    private val categoryRepository: CategoryRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
 
@@ -132,26 +130,29 @@ class ReportsViewModel @Inject constructor(
             val currentTotalGrosze = expenseRepository.getTotalAmountForPeriod(userId, startDate, endDate)
             val periodDuration = (endDate - startDate).coerceAtLeast(1)
             val previousStartDate = startDate - periodDuration
-            val previousEndDate = startDate
-            val previousTotalGrosze = expenseRepository.getTotalAmountForPeriod(userId, previousStartDate, previousEndDate)
+            val previousTotalGrosze = expenseRepository.getTotalAmountForPeriod(userId, previousStartDate, startDate)
 
             val categoryTotals = expenseRepository.getExpensesPerCategoryForPeriod(userId, startDate, endDate)
 
             val currentTotalPLN = currentTotalGrosze / 100.0
             val previousTotalPLN = previousTotalGrosze / 100.0
 
-            val mappedCategories = categoryTotals.mapIndexed { index, item ->
-                val amountPLN = item.totalAmount / 100.0
-                val pct = if (currentTotalGrosze > 0) ((item.totalAmount * 100) / currentTotalGrosze).toInt() else 0
+            val mappedCategories = if (categoryTotals.isNotEmpty()) {
+                categoryTotals.mapIndexed { index, item ->
+                    val amountPLN = item.totalAmount / 100.0
+                    val pct = if (currentTotalGrosze > 0) ((item.totalAmount * 100) / currentTotalGrosze).toInt() else 0
 
-                CategoryReport(
-                    id = (index + 1).toLong(),
-                    name = item.categoryName,
-                    amount = amountPLN,
-                    percentage = pct,
-                    color = getCategoryColor(item.categoryName, index),
-                    icon = getCategoryIcon(item.categoryName)
-                )
+                    CategoryReport(
+                        id = (index + 1).toLong(),
+                        name = item.categoryName,
+                        amount = amountPLN,
+                        percentage = pct,
+                        color = getCategoryColor(item.categoryName, index),
+                        icon = getCategoryIcon(item.categoryName)
+                    )
+                }
+            } else {
+                emptyList()
             }
 
             val top3Pct = mappedCategories.take(3).sumOf { it.percentage }

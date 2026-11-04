@@ -26,17 +26,27 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,8 +55,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import java.util.Locale
-import androidx.compose.material3.IconButtonDefaults
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(
     viewModel: ReportsViewModel = hiltViewModel(),
@@ -55,18 +65,64 @@ fun ReportsScreen(
     val state by viewModel.uiState.collectAsState()
     ReportsContent(
         state = state,
-        onPeriodSelected = { period -> viewModel.onPeriodSelected(period) },
+        onTimeFilterSelected = { filter -> viewModel.onTimeFilterSelected(filter) },
+        onCustomDateRangeSelected = { start, end -> viewModel.onCustomDateRangeSelected(start, end) },
         onSeeAllCategoriesClick = onSeeAllCategoriesClick
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ReportsContent(
     state: ReportsUiState,
-    onPeriodSelected: (ReportPeriod) -> Unit = {},
+    onTimeFilterSelected: (TimeFilter) -> Unit = {},
+    onCustomDateRangeSelected: (Long?, Long?) -> Unit = { _, _ -> },
     onSeeAllCategoriesClick: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
+    var showFilterMenu by remember { mutableStateOf(false) }
+    var showDateRangePicker by remember { mutableStateOf(false) }
+
+    if (showDateRangePicker) {
+        val dateRangePickerState = rememberDateRangePickerState()
+
+        DatePickerDialog(
+            onDismissRequest = { showDateRangePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val start = dateRangePickerState.selectedStartDateMillis
+                        val end = dateRangePickerState.selectedEndDateMillis
+                        if (start != null && end != null) {
+                            onCustomDateRangeSelected(start, end)
+                        }
+                        showDateRangePicker = false
+                    }
+                ) {
+                    Text("Zatwierdź")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDateRangePicker = false }) {
+                    Text("Anuluj")
+                }
+            }
+        ) {
+            DateRangePicker(
+                state = dateRangePickerState,
+                title = {
+                    Text(
+                        text = "Wybierz zakres dat",
+                        modifier = Modifier.padding(16.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(500.dp)
+            )
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -94,61 +150,47 @@ private fun ReportsContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            FilledTonalIconButton(
-                onClick = { /* TODO: Filtry */ },
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Tune,
-                    contentDescription = "Otwórz filtry"
-                )
-            }
-        }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ReportPeriod.entries.forEach { period ->
-                val isSelected = state.selectedPeriod == period
-                val label = when (period) {
-                    ReportPeriod.WEEK -> "T"
-                    ReportPeriod.MONTH -> "M"
-                    ReportPeriod.YEAR -> "R"
-                }
-
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(
-                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
-                        )
-                        .clickable { onPeriodSelected(period) }
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
+            Box {
+                FilledTonalIconButton(
+                    onClick = { showFilterMenu = true },
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
                 ) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = "Otwórz filtry czasowe"
                     )
                 }
-            }
-        }
 
-        val periodText = when (state.selectedPeriod) {
-            ReportPeriod.WEEK -> "TYGODNIU"
-            ReportPeriod.MONTH -> "MIESIĄCU"
-            ReportPeriod.YEAR -> "ROKU"
-        }
-        val previousPeriodText = when (state.selectedPeriod) {
-            ReportPeriod.WEEK -> "Poprzedni tydzień"
-            ReportPeriod.MONTH -> "Poprzedni miesiąc"
-            ReportPeriod.YEAR -> "Poprzedni rok"
+                DropdownMenu(
+                    expanded = showFilterMenu,
+                    onDismissRequest = { showFilterMenu = false }
+                ) {
+                    TimeFilter.entries.forEach { filter ->
+                        val isSelected = state.selectedTimeFilter == filter
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = filter.label,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            onClick = {
+                                showFilterMenu = false
+                                if (filter == TimeFilter.CUSTOM_RANGE) {
+                                    showDateRangePicker = true
+                                } else {
+                                    onTimeFilterSelected(filter)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
         }
 
         Card(
@@ -162,7 +204,7 @@ private fun ReportsContent(
                 modifier = Modifier.padding(20.dp)
             ) {
                 Text(
-                    text = "ŁĄCZNIE W TYM $periodText",
+                    text = state.periodLabel,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
@@ -186,7 +228,7 @@ private fun ReportsContent(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "$previousPeriodText: ${state.previousPeriodTotal.pln()}",
+                        text = "Poprzedni okres: ${state.previousPeriodTotal.pln()}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )

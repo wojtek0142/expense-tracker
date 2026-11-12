@@ -15,6 +15,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.expense_tracker.ui.category.CategoryManagementScreen
+import com.example.expense_tracker.ui.category.CategoryManagementViewModel
 import com.example.expense_tracker.ui.main.MainScreen
 import com.example.expense_tracker.ui.main.MainViewModel
 import com.example.expense_tracker.ui.receipt.AddReceiptScreen
@@ -68,7 +70,10 @@ fun AppNavigation() {
                 val mainViewModel: MainViewModel = hiltViewModel()
                 MainScreen(
                     viewModel = mainViewModel,
-                    contentPadding = innerPadding
+                    contentPadding = innerPadding,
+                    onManageCategoriesClick = {
+                        navController.navigate("categories_management")
+                    }
                 )
             }
             composable(Destination.AddReceipt.route) {
@@ -79,6 +84,15 @@ fun AppNavigation() {
                 AddExpenseScreen(
                     viewModel = addExpenseViewModel,
                     onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable("categories_management") {
+                val categoryViewModel: CategoryManagementViewModel = hiltViewModel()
+                CategoryManagementScreen(
+                    viewModel = categoryViewModel,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    }
                 )
             }
             composable(Destination.Reports.route) {

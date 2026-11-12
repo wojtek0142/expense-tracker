@@ -13,9 +13,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.expense_tracker.data.local.datastore.SessionManager
 import com.example.expense_tracker.data.repository.ExpenseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -100,8 +103,11 @@ class ReportsViewModel @Inject constructor(
         loadDataForFilter(TimeFilter.CUSTOM_RANGE, startDateMillis, endDateMillis)
     }
 
+    private var loadJob: Job? = null
+
     private fun loadDataForFilter(filter: TimeFilter, customStart: Long?, customEnd: Long?) {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
             val userId = sessionManager.getUserId() ?: "default_user"
@@ -126,47 +132,49 @@ class ReportsViewModel @Inject constructor(
                 }
             }
 
-            // Pobieranie danych z bazy Room
-            val currentTotalGrosze = expenseRepository.getTotalAmountForPeriod(userId, startDate, endDate)
             val periodDuration = (endDate - startDate).coerceAtLeast(1)
             val previousStartDate = startDate - periodDuration
-            val previousTotalGrosze = expenseRepository.getTotalAmountForPeriod(userId, previousStartDate, startDate)
 
-            val categoryTotals = expenseRepository.getExpensesPerCategoryForPeriod(userId, startDate, endDate)
+            // Obserwowanie danych z bazy Room przez Flow
+            combine(
+                expenseRepository.observeTotalAmountForPeriod(userId, startDate, endDate),
+                expenseRepository.observeTotalAmountForPeriod(userId, previousStartDate, startDate),
+                expenseRepository.observeExpensesPerCategoryForPeriod(userId, startDate, endDate)
+            ) { currentTotalGrosze, previousTotalGrosze, categoryTotals ->
+                val currentTotalPLN = currentTotalGrosze / 100.0
+                val previousTotalPLN = previousTotalGrosze / 100.0
 
-            val currentTotalPLN = currentTotalGrosze / 100.0
-            val previousTotalPLN = previousTotalGrosze / 100.0
+                val mappedCategories = if (categoryTotals.isNotEmpty()) {
+                    categoryTotals.mapIndexed { index, item ->
+                        val amountPLN = item.totalAmount / 100.0
+                        val pct = if (currentTotalGrosze > 0) ((item.totalAmount * 100) / currentTotalGrosze).toInt() else 0
 
-            val mappedCategories = if (categoryTotals.isNotEmpty()) {
-                categoryTotals.mapIndexed { index, item ->
-                    val amountPLN = item.totalAmount / 100.0
-                    val pct = if (currentTotalGrosze > 0) ((item.totalAmount * 100) / currentTotalGrosze).toInt() else 0
+                        CategoryReport(
+                            id = (index + 1).toLong(),
+                            name = item.categoryName,
+                            amount = amountPLN,
+                            percentage = pct,
+                            color = getCategoryColor(item.categoryName, index),
+                            icon = getCategoryIcon(item.categoryName)
+                        )
+                    }
+                } else {
+                    emptyList()
+                }
 
-                    CategoryReport(
-                        id = (index + 1).toLong(),
-                        name = item.categoryName,
-                        amount = amountPLN,
-                        percentage = pct,
-                        color = getCategoryColor(item.categoryName, index),
-                        icon = getCategoryIcon(item.categoryName)
+                val top3Pct = mappedCategories.take(3).sumOf { it.percentage }
+
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        isLoading = false,
+                        currentPeriodTotal = currentTotalPLN,
+                        previousPeriodTotal = previousTotalPLN,
+                        totalCategoriesCount = mappedCategories.size,
+                        topCategoriesPercentage = top3Pct,
+                        categories = mappedCategories
                     )
                 }
-            } else {
-                emptyList()
-            }
-
-            val top3Pct = mappedCategories.take(3).sumOf { it.percentage }
-
-            _uiState.update { currentState ->
-                currentState.copy(
-                    isLoading = false,
-                    currentPeriodTotal = currentTotalPLN,
-                    previousPeriodTotal = previousTotalPLN,
-                    totalCategoriesCount = mappedCategories.size,
-                    topCategoriesPercentage = top3Pct,
-                    categories = mappedCategories
-                )
-            }
+            }.collect()
         }
     }
 

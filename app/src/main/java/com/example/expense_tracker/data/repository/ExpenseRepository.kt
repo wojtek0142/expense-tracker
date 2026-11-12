@@ -62,6 +62,13 @@ class ExpenseRepository @Inject constructor(
     ): Long =
         appDao.getTotalAmountForPeriod(userId, startDate, endDate)
 
+    fun observeTotalAmountForPeriod(
+        userId: String,
+        startDate: Long,
+        endDate: Long
+    ): Flow<Long> =
+        appDao.observeTotalAmountForPeriod(userId, startDate, endDate)
+
     suspend fun getExpensesPerCategoryForPeriod(
         userId: String,
         startDate: Long,
@@ -71,6 +78,17 @@ class ExpenseRepository @Inject constructor(
         startDate = startDate,
         endDate = endDate
     )
+
+    fun observeExpensesPerCategoryForPeriod(
+        userId: String,
+        startDate: Long,
+        endDate: Long
+    ): Flow<List<CategoryTotal>> =
+        appDao.observeExpensesPerCategoryForPeriod(
+            userId = userId,
+            startDate = startDate,
+            endDate = endDate
+        )
 
     suspend fun getUnsyncedExpenses(userId: String) =
         appDao.getUnsyncedExpenses(userId)

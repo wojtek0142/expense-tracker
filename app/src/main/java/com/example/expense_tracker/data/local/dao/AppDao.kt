@@ -353,6 +353,20 @@ interface AppDao {
     ): Long
 
     @Query("""
+        SELECT COALESCE(SUM(amount), 0)
+        FROM expenses
+        WHERE user_id = :userId
+          AND deletedAt IS NULL
+          AND date >= :startDate
+          AND date < :endDate
+    """)
+    fun observeTotalAmountForPeriod(
+        userId: String,
+        startDate: Long,
+        endDate: Long
+    ): Flow<Long>
+
+    @Query("""
         SELECT c.name AS categoryName,
                SUM(e.amount) AS totalAmount
         FROM expenses e
@@ -373,6 +387,28 @@ interface AppDao {
         startDate: Long,
         endDate: Long
     ): List<CategoryTotal>
+
+    @Query("""
+        SELECT c.name AS categoryName,
+               SUM(e.amount) AS totalAmount
+        FROM expenses e
+        INNER JOIN products p ON e.product_id = p.id
+        INNER JOIN categories c ON p.category_id = c.id
+        WHERE e.user_id = :userId
+          AND p.user_id = :userId
+          AND e.deletedAt IS NULL
+          AND p.deletedAt IS NULL
+          AND c.deletedAt IS NULL
+          AND e.date >= :startDate
+          AND e.date < :endDate
+        GROUP BY c.id, c.name
+        ORDER BY totalAmount DESC
+    """)
+    fun observeExpensesPerCategoryForPeriod(
+        userId: String,
+        startDate: Long,
+        endDate: Long
+    ): Flow<List<CategoryTotal>>
 
     @Query("""
         UPDATE expenses

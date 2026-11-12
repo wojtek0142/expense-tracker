@@ -20,8 +20,8 @@ import com.example.expense_tracker.domain.model.Expense
 import com.example.expense_tracker.domain.model.Product
 import java.text.SimpleDateFormat
 import java.util.Locale
-
-
+import kotlinx.coroutines.flow.catch
+import com.example.expense_tracker.domain.model.CategoryOption
 // Jeden wydatek na liście podglądowej
 data class PendingExpense(
     val id: String = UUID.randomUUID().toString(),
@@ -44,6 +44,8 @@ data class AddExpenseUiState(
     val quantity: Int = 1,
     val date: String = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.getDefault())
         .format(java.util.Date()),
+    val categoryId: String? = null,          // <-- NOWE: wybrana kategoria z bazy
+    val availableCategories: List<CategoryOption> = emptyList(), // <-- NOWE
     val category: String = "",
     val pendingExpenses: List<PendingExpense> = emptyList(),
     val isLoading: Boolean = false,
@@ -81,10 +83,29 @@ class AddExpenseViewModel @Inject constructor(
         _uiState.update { it.copy(date = newDate) }
     }
 
-    fun onCategoryChange(newCategory: String) {
-        _uiState.update { it.copy(category = newCategory) }
+    fun onCategorySelected(option: CategoryOption) {
+        _uiState.update {
+            it.copy(
+                category = option.name,
+                categoryId = option.id,   // null → nowa kategoria
+                errorMessage = null
+            )
+        }
     }
 
+    fun onCategoryTextChange(newCategory: String) {
+        _uiState.update {
+            it.copy(
+                category = newCategory,
+                categoryId = null,   // wpisana nazwa = potencjalnie nowa kategoria
+                errorMessage = null
+            )
+        }
+    }
+
+    init {
+        observeCategories()
+    }
 
     // Dodaje bieżący formularz do listy podglądowej.
     // Nie zapisuje jeszcze danych do bazy.
@@ -111,6 +132,7 @@ class AddExpenseViewModel @Inject constructor(
             title = title,
             date = state.date,
             category = state.category.ifBlank { "Bez kategorii" },
+            categoryId = state.categoryId
         )
 
         _uiState.update {
@@ -215,7 +237,7 @@ class AddExpenseViewModel @Inject constructor(
 
         productRepository.findProductByName(userId, nameKey)?.let { return it.id }
 
-        val categoryId = resolveCategoryId(userId, pending.category, now)
+        val categoryId = resolveCategoryId(userId, pending, now)
 
         val newProduct = Product(
             id = UUID.randomUUID().toString(),
@@ -233,14 +255,18 @@ class AddExpenseViewModel @Inject constructor(
 
     private suspend fun resolveCategoryId(
         userId: String,
-        categoryName: String,
+        pending: PendingExpense,
         now: Long
     ): String {
-        val name = categoryName.ifBlank { "Bez kategorii" }
+        // Jeśli użytkownik wybrał istniejącą kategorię — użyj jej
+        pending.categoryId?.let { return it }
+
+        val name = pending.category.ifBlank { "Bez kategorii" }
 
         categoryRepository.findBuiltinCategoryByName(name)?.let { return it.id }
         categoryRepository.findUserCategoryByName(userId, name)?.let { return it.id }
 
+        // Nowa kategoria — dodaj do bazy
         val newCategory = Category(
             id = UUID.randomUUID().toString(),
             name = name,
@@ -253,4 +279,20 @@ class AddExpenseViewModel @Inject constructor(
         categoryRepository.addCategory(newCategory)
         return newCategory.id
     }
+
+    private fun observeCategories() {
+        viewModelScope.launch {
+            val userId = sessionManager.getUserId() ?: return@launch
+            categoryRepository.observeCategoriesOrderedByUsage(userId)
+                .catch { e ->
+                    _uiState.update {
+                        it.copy(errorMessage = "Błąd ładowania kategorii: ${e.message}")
+                    }
+                }
+                .collect { categories ->
+                    _uiState.update { it.copy(availableCategories = categories) }
+                }
+        }
+    }
 }
+

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.expense_tracker.ui.theme.*
+import java.util.Locale
 
 
 @Composable
@@ -61,8 +62,8 @@ fun MainScreen(
         ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item { HeaderSection(state.userName) }
-        item { BudgetCard(state.budget) }
+        item { HeaderSection(state.userName, state.currentDate) }
+        item { BudgetCard(state.budget, state.currentMonth) }
         item { DailyStatsRow(state.budget) }
 
         item {
@@ -120,7 +121,7 @@ fun MainScreen(
 // --- SEKCJE ---
 
 @Composable
-fun HeaderSection(userName: String) {
+fun HeaderSection( userName: String, currentDate: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -128,7 +129,7 @@ fun HeaderSection(userName: String) {
     ) {
         Column {
             Text(
-                text = "CZWARTEK, 24 PAŹDZIERNIKA",
+                text = currentDate,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold
@@ -158,7 +159,7 @@ fun HeaderSection(userName: String) {
 
 // ---widget z budzetem na dany miesiac---
 @Composable
-fun BudgetCard(budget: BudgetState) {
+fun BudgetCard(budget: BudgetState, currentMonth: String) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         shape = RoundedCornerShape(24.dp),
@@ -170,7 +171,7 @@ fun BudgetCard(budget: BudgetState) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Budżet • październik",
+                    text = currentMonth,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelLarge
                 )
@@ -272,14 +273,37 @@ fun BudgetCard(budget: BudgetState) {
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
+                        val change = budget.monthOverMonthChangePercent
+                        val changeAmount = budget.monthOverMonthChangeAmount
+
+                        val changeText = when {
+                            change == null -> "Brak danych z poprzedniego miesiąca"
+                            change > 0.0   -> "+${"%.0f".format(change)}% więcej niż miesiąc temu"
+                            change < 0.0   -> "${"%.0f".format(change)}% mniej niż miesiąc temu"
+                            else           -> "Tyle samo co miesiąc temu"
+                        }
+                        val changeColor = when {
+                            change == null -> Color.Gray
+                            change < 0.0   -> Color(0xFF2E7D32) // zielony
+                            change > 0.0   -> Color(0xFFC62828) // czerwony
+                            else           -> Color.Gray
+                        }
+
+                        val changeAmountText = when {
+                            changeAmount == null -> "Brak danych z poprzedniego miesiąca"
+                            changeAmount > 0.0 -> "+${"%.2f".format(Locale("pl", "PL"), changeAmount)} zł więcej niż miesiąc temu"
+                            changeAmount < 0.0 -> "${"%.2f".format(Locale("pl", "PL"), -changeAmount)} zł mniej niż miesiąc temu"  // <-- -changeAmount
+                            else -> "Tyle samo co miesiąc temu"
+                        }
+
                         Text(
-                            text = "12% mniej niż miesiąc temu",
-                            color = MaterialTheme.colorScheme.onSurface,
+                            text = changeText ,
+                            color = changeColor,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "To o 324 zł mniej niż we wrześniu",
+                            text = changeAmountText,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
                         )
@@ -297,6 +321,30 @@ fun DailyStatsRow(budget: BudgetState) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        val projectedSpent = budget.projectedSpent
+        val overUnder = budget.projectedOverUnder
+        val overUnderPercent = budget.projectedOverUnderPercent
+
+        val forecastText = when {
+            overUnder > 0.0 ->
+                "Prognoza: ${"%.2f".format(projectedSpent)} zł " +
+                        "(przekroczysz o ${"%.2f".format(overUnder)} zł / " +
+                        "+${"%.0f".format(overUnderPercent)}%)"
+
+            overUnder < 0.0 ->
+                "Prognoza: ${"%.2f".format(projectedSpent)} zł " +
+                        "(zaoszczędzisz ${"%.2f".format(-overUnder)} zł / " +
+                        "${"%.0f".format(overUnderPercent)}%)"
+
+            else ->
+                "Prognoza: ${"%.2f".format(projectedSpent)} zł (dokładnie w budżecie)"
+        }
+
+        val forecastColor = when {
+            overUnder > 0.0 -> Color(0xFFC62828)  // czerwony – przekroczenie
+            overUnder < 0.0 -> Color(0xFF2E7D32)  // zielony – oszczędność
+            else            -> Color.Gray
+        }
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Outlined.BarChart,
@@ -304,8 +352,8 @@ fun DailyStatsRow(budget: BudgetState) {
             iconBg = MaterialTheme.colorScheme.errorContainer,
             title = "Średnio dziennie",
             value = "${String.format("%.2f", budget.dailyAverage).replace('.', ',')} zł",
-            subtitle = "Prognoza: +200 zł ponad budżet",
-            subtitleColor = MaterialTheme.colorScheme.error
+            subtitle = forecastText,
+            subtitleColor = forecastColor
         )
         StatCard(
             modifier = Modifier.weight(1f),
@@ -464,7 +512,11 @@ fun TopCategoryCard(state: MainScreenState) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${state.topCategoryAmount} zł • ${state.topCategoryPercent}% wydatków",
+                    text = if (state.topCategoryAmount > 0.0) {
+                        "${"%.2f".format(Locale("pl", "PL"), state.topCategoryAmount)} zł • ${state.topCategoryPercent}% wydatków"
+                    } else {
+                        "Brak wydatków w tym miesiącu"
+                    },
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -476,7 +528,7 @@ fun TopCategoryCard(state: MainScreenState) {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Default.Restaurant,
+                    imageVector = iconForCategory(state.topCategory),   // <-- dynamiczna ikona
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )
@@ -611,5 +663,18 @@ fun OverduePaymentAlert() {
                 tint = MaterialTheme.colorScheme.onErrorContainer
             )
         }
+    }
+}
+
+private fun iconForCategory(categoryName: String): ImageVector {
+    val key = categoryName.lowercase(Locale("pl", "PL"))
+    return when {
+        key.contains("jedzen") || key.contains("restaur") -> Icons.Default.Restaurant
+        key.contains("transport") || key.contains("paliw") -> Icons.Default.DirectionsCar
+        key.contains("zakup") -> Icons.Default.ShoppingCart
+        key.contains("dom") || key.contains("czynsz") -> Icons.Default.Home
+        key.contains("subskryp") || key.contains("abonament") -> Icons.Default.Subscriptions
+        key.contains("telefon") || key.contains("komórk") -> Icons.Default.PhoneAndroid
+        else -> Icons.Default.Category
     }
 }

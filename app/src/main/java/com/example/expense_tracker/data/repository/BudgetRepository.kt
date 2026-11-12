@@ -22,6 +22,9 @@ class BudgetRepository @Inject constructor(
     ): Budget? =
         appDao.getBudgetForMonth(userId, month)?.toDomain()
 
+    fun observeBudgetForMonth(userId: String, month: String): Flow<Budget?> =
+        appDao.observeBudgetForMonth(userId, month).map { it?.toDomain() }
+
     suspend fun addBudget(budget: Budget) {
         appDao.insertBudget(budget.toEntity())
     }

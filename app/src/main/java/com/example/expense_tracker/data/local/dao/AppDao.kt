@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AppDao {
-
     // ==========================================
     // USERS
     // ==========================================
@@ -38,6 +37,42 @@ interface AppDao {
     // Kategorie użytkownika: user_id = jego UUID
     // ==========================================
 
+    @Query("""
+    SELECT c.name AS categoryName,
+           SUM(e.amount) AS totalAmount
+    FROM expenses e
+    INNER JOIN products p ON e.product_id = p.id
+    INNER JOIN categories c ON p.category_id = c.id
+    WHERE e.user_id = :userId
+      AND p.user_id = :userId
+      AND e.deletedAt IS NULL
+      AND p.deletedAt IS NULL
+      AND c.deletedAt IS NULL
+      AND e.date >= :startDate
+      AND e.date < :endDate
+    GROUP BY c.id, c.name
+    ORDER BY totalAmount DESC
+    LIMIT 1
+""")
+    fun observeTopCategoryForPeriod(
+        userId: String,
+        startDate: Long,
+        endDate: Long
+    ): Flow<CategoryTotal?>
+    @Query("""
+    SELECT c.id AS id,
+           c.name AS name,
+           c.is_builtin AS isBuiltin,
+           COUNT(e.id) AS usageCount
+    FROM categories c
+    LEFT JOIN products p ON p.category_id = c.id AND p.deletedAt IS NULL
+    LEFT JOIN expenses e ON e.product_id = p.id AND e.deletedAt IS NULL AND e.user_id = :userId
+    WHERE (c.user_id IS NULL OR c.user_id = :userId)
+      AND c.deletedAt IS NULL
+    GROUP BY c.id, c.name, c.is_builtin
+    ORDER BY usageCount DESC, c.name ASC
+""")
+    fun observeCategoriesOrderedByUsage(userId: String): Flow<List<CategoryWithUsage>>
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategory(category: CategoryEntity)
 
@@ -180,6 +215,44 @@ interface AppDao {
     // ==========================================
     // EXPENSES
     // ==========================================
+
+    // EXPENSES – ostatnie wydatki z nazwą produktu i kategorii
+
+    @Query("""
+    SELECT e.id AS id,
+           p.name AS productName,
+           c.name AS categoryName,
+           e.amount AS amount,
+           e.date AS date,
+           e.quantity AS quantity
+    FROM expenses e
+    INNER JOIN products p ON p.id = e.product_id
+    INNER JOIN categories c ON c.id = p.category_id
+    WHERE e.user_id = :userId
+      AND e.deletedAt IS NULL
+      AND p.deletedAt IS NULL
+      AND c.deletedAt IS NULL
+    ORDER BY e.date DESC
+    LIMIT :limit
+""")
+    fun observeRecentExpensesWithProductAndCategory(
+        userId: String,
+        limit: Int
+    ): Flow<List<RecentExpenseRow>>
+
+    @Query("""
+        SELECT AVG(amount)
+        FROM expenses
+        WHERE user_id = :userId
+          AND deletedAt IS NULL
+          AND date >= :fromDate
+          AND date <= :toDate
+    """)
+    fun observeAverageExpenseFromMonthStart(
+        userId: String,
+        fromDate: Long,
+        toDate: Long
+    ): Flow<Double?>
 
     // zwraca ilosc wydatkow
         @Query("""
@@ -399,6 +472,15 @@ interface AppDao {
     // BUDGETS
     // ==========================================
 
+    @Query("""
+    SELECT * FROM budgets
+    WHERE user_id = :userId
+      AND month = :month
+      AND deletedAt IS NULL
+    LIMIT 1
+""")
+    fun observeBudgetForMonth(userId: String, month: String): Flow<BudgetEntity?>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBudget(budget: BudgetEntity)
 
@@ -450,4 +532,20 @@ interface AppDao {
 data class CategoryTotal(
     val categoryName: String,
     val totalAmount: Long
+)
+
+data class CategoryWithUsage(
+    val id: String,
+    val name: String,
+    val isBuiltin: Boolean,
+    val usageCount: Int
+)
+
+data class RecentExpenseRow(
+    val id: String,
+    val productName: String,
+    val categoryName: String,
+    val amount: Long,   // grosze
+    val date: Long,     // ms
+    val quantity: Float
 )

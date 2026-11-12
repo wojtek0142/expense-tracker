@@ -9,3 +9,10 @@ data class Category(
     val updatedAt: Long,
     val deletedAt: Long? = null
 )
+
+data class CategoryOption(
+    val id: String? = null,
+    val name: String,
+    val usageCount: Int = 0,
+    val isBuiltin: Boolean = false
+)

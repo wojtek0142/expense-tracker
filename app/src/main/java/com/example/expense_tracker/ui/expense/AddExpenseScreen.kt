@@ -36,7 +36,16 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.ui.text.style.TextAlign
-
+import com.example.expense_tracker.domain.model.CategoryOption
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.TextButton
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 @Composable
 fun AddExpenseScreen(
     onNavigateBack: () -> Unit,
@@ -45,7 +54,7 @@ fun AddExpenseScreen(
     val uiState by viewModel.uiState.collectAsState()
     var newItem by remember { mutableStateOf("") }
     val expenseItems = remember { mutableStateListOf<String>() }
-
+    var showDatePicker by remember { mutableStateOf(false) }
     // Reakcja na zapis
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
@@ -130,25 +139,32 @@ fun AddExpenseScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Data
                 Column(modifier = Modifier.weight(1f)) {
                     InputLabel("Data")
-                    CustomTextField(
-                        value = uiState.date,
-                        onValueChange = {},
-                        readOnly = true, // W prawdziwej apce otwierałby DatePicker
-                        trailingIcon = Icons.Default.CalendarToday
-                    )
+                    Box {
+                        CustomTextField(
+                            value = uiState.date,
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = Icons.Default.CalendarToday
+                        )
+                        // Przezroczysty overlay — przechwytuje kliknięcie (readOnly pole nie woła onClick)
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clickable { showDatePicker = true }
+                        )
+                    }
                 }
                 // Kategoria
                 Column(modifier = Modifier.weight(1f)) {
                     InputLabel("Kategoria")
-                    CustomTextField(
-                        value = uiState.category,
-                        onValueChange = {},
-                        readOnly = true, // Otwierałby dropdown
-                        placeholder = "Wybierz",
-                        trailingIcon = Icons.Default.ArrowDropDown
+                    CategorySelector(
+                        selectedName = uiState.category,
+                        selectedId = uiState.categoryId,
+                        categories = uiState.availableCategories,
+                        onOptionSelected = viewModel::onCategorySelected,
+                        onTextChange = viewModel::onCategoryTextChange
                     )
                 }
             }
@@ -292,7 +308,33 @@ fun AddExpenseScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = parseDateToMillis(uiState.date)
+                ?: System.currentTimeMillis()
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            viewModel.onDateChange(millisToDisplayDate(millis))
+                        }
+                        showDatePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Anuluj") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
+
 
 // --- Komponenty pomocnicze ---
 
@@ -548,4 +590,121 @@ fun QuantitySelector(
             )
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategorySelector(
+    selectedName: String,
+    selectedId: String?,
+    categories: List<CategoryOption>,
+    onOptionSelected: (CategoryOption) -> Unit,
+    onTextChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf(selectedName) }
+
+    // Synchronizacja, gdy wybór zmieni się z zewnątrz (np. reset po zapisie)
+    LaunchedEffect(selectedName) { query = selectedName }
+
+    // Tylko istniejące kategorie, filtrowane po wpisanym tekście
+    val filtered = remember(query, categories) {
+        if (query.isBlank()) categories
+        else categories.filter { it.name.contains(query, ignoreCase = true) }
+    }
+
+    Column(modifier = modifier) {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it }
+        ) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = {
+                    query = it
+                    onTextChange(it)          // categoryId = null, category = wpisany tekst
+                    expanded = true           // pokazuj podpowiedzi podczas pisania
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
+                placeholder = { Text("Wybierz lub wpisz") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                trailingIcon = {
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                )
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                if (filtered.isEmpty()) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = if (query.isBlank())
+                                    "Brak kategorii — wpisz nową"
+                                else
+                                    "Brak dopasowań — „$query\" zostanie utworzona po zapisie",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        onClick = {},
+                        enabled = false
+                    )
+                } else {
+                    filtered.forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(option.name)
+                                    if (option.usageCount > 0) {
+                                        Text(
+                                            text = "${option.usageCount}×",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            },
+                            onClick = {
+                                onOptionSelected(option)   // categoryId = option.id
+                                query = option.name
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun parseDateToMillis(date: String): Long? = runCatching {
+    val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+        isLenient = false
+    }
+    sdf.parse(date)?.time
+}.getOrNull()
+
+private fun millisToDisplayDate(millis: Long): String {
+    val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+    return sdf.format(Date(millis))
 }

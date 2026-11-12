@@ -42,7 +42,7 @@ data class AddExpenseUiState(
     val amount: String = "",
     val title: String = "",
     val quantity: Int = 1,
-    val date: String = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.getDefault())
+    val date: String = java.text.SimpleDateFormat("dd.MM.yyyy HH:mm:ss", java.util.Locale.getDefault())
         .format(java.util.Date()),
     val categoryId: String? = null,          // <-- NOWE: wybrana kategoria z bazy
     val availableCategories: List<CategoryOption> = emptyList(), // <-- NOWE
@@ -185,7 +185,7 @@ class AddExpenseViewModel @Inject constructor(
 
             try {
                 val now = System.currentTimeMillis()
-                val dateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+                val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault())
 
                 val expenses = state.pendingExpenses.map { pending ->
                     val productId = resolveProductId(userId, pending, now)

@@ -234,10 +234,19 @@ class AddExpenseViewModel @Inject constructor(
         pending.productId?.let { return it }
 
         val nameKey = pending.title.lowercase(Locale.getDefault())
-
-        productRepository.findProductByName(userId, nameKey)?.let { return it.id }
-
         val categoryId = resolveCategoryId(userId, pending, now)
+
+        val existingProduct = productRepository.findProductByName(userId, nameKey)
+        if (existingProduct != null) {
+            if (existingProduct.categoryId != categoryId) {
+                val updatedProduct = existingProduct.copy(
+                    categoryId = categoryId,
+                    updatedAt = now
+                )
+                productRepository.updateProduct(updatedProduct)
+            }
+            return existingProduct.id
+        }
 
         val newProduct = Product(
             id = UUID.randomUUID().toString(),

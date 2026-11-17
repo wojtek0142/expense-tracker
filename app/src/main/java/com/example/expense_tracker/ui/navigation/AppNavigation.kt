@@ -17,11 +17,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.expense_tracker.ui.category.CategoryManagementScreen
 import com.example.expense_tracker.ui.category.CategoryManagementViewModel
+import com.example.expense_tracker.ui.expense.AddExpenseScreen
+import com.example.expense_tracker.ui.expense.AddExpenseViewModel
+import com.example.expense_tracker.ui.expense.EditExpenseScreen
+import com.example.expense_tracker.ui.expense.EditExpenseViewModel
+import com.example.expense_tracker.ui.history.HistoryScreen
+import com.example.expense_tracker.ui.history.HistoryViewModel
 import com.example.expense_tracker.ui.main.MainScreen
 import com.example.expense_tracker.ui.main.MainViewModel
 import com.example.expense_tracker.ui.receipt.AddReceiptScreen
-import com.example.expense_tracker.ui.expense.AddExpenseScreen
-import com.example.expense_tracker.ui.expense.AddExpenseViewModel
 import com.example.expense_tracker.ui.reports.AllCategoriesScreen
 import com.example.expense_tracker.ui.reports.ReportsScreen
 import com.example.expense_tracker.ui.reports.ReportsViewModel
@@ -73,6 +77,22 @@ fun AppNavigation() {
                     contentPadding = innerPadding,
                     onManageCategoriesClick = {
                         navController.navigate("categories_management")
+                    },
+                    onExpenseClick = { expenseId ->
+                        navController.navigate("edit_expense/$expenseId")
+                    },
+                    onSeeAllExpensesClick = {
+                        navController.navigate("history")
+                    }
+                )
+            }
+            composable("history") {
+                val historyViewModel: HistoryViewModel = hiltViewModel()
+                HistoryScreen(
+                    viewModel = historyViewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onExpenseClick = { expenseId ->
+                        navController.navigate("edit_expense/$expenseId")
                     }
                 )
             }
@@ -83,6 +103,13 @@ fun AppNavigation() {
                 val addExpenseViewModel: AddExpenseViewModel = hiltViewModel()
                 AddExpenseScreen(
                     viewModel = addExpenseViewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable("edit_expense/{expenseId}") {
+                val editExpenseViewModel: EditExpenseViewModel = hiltViewModel()
+                EditExpenseScreen(
+                    viewModel = editExpenseViewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

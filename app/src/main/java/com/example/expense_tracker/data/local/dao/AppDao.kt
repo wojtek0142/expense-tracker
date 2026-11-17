@@ -241,6 +241,38 @@ interface AppDao {
     ): Flow<List<RecentExpenseRow>>
 
     @Query("""
+    SELECT e.id AS id,
+           p.name AS productName,
+           c.name AS categoryName,
+           e.amount AS amount,
+           e.date AS date,
+           e.quantity AS quantity
+    FROM expenses e
+    INNER JOIN products p ON p.id = e.product_id
+    INNER JOIN categories c ON c.id = p.category_id
+    WHERE e.id = :expenseId
+      AND e.user_id = :userId
+      AND e.deletedAt IS NULL
+    LIMIT 1
+""")
+    suspend fun getExpenseDetailsById(
+        expenseId: String,
+        userId: String
+    ): RecentExpenseRow?
+
+    @Query("""
+        SELECT * FROM expenses
+        WHERE id = :expenseId
+          AND user_id = :userId
+          AND deletedAt IS NULL
+        LIMIT 1
+    """)
+    suspend fun getExpenseById(
+        expenseId: String,
+        userId: String
+    ): ExpenseEntity?
+
+    @Query("""
         SELECT AVG(amount)
         FROM expenses
         WHERE user_id = :userId

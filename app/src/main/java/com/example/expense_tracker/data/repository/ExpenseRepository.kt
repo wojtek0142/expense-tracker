@@ -29,6 +29,17 @@ class ExpenseRepository @Inject constructor(
             expenses.map { it.toDomain() }
         }
 
+    suspend fun getExpenseById(
+        expenseId: String,
+        userId: String
+    ): Expense? =
+        appDao.getExpenseById(expenseId, userId)?.toDomain()
+
+    suspend fun getExpenseDetailsById(
+        expenseId: String,
+        userId: String
+    ) = appDao.getExpenseDetailsById(expenseId, userId)
+
     suspend fun addExpense(expense: Expense) {
         appDao.insertExpense(expense.toEntity())
     }

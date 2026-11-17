@@ -47,7 +47,9 @@ import java.util.Locale
 fun MainScreen(
     viewModel: MainViewModel = hiltViewModel(),
     contentPadding: PaddingValues = PaddingValues(),
-    onManageCategoriesClick: () -> Unit = {}
+    onManageCategoriesClick: () -> Unit = {},
+    onExpenseClick: (String) -> Unit = {},
+    onSeeAllExpensesClick: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -74,7 +76,6 @@ fun MainScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val count by viewModel.monthlyExpenseCount.collectAsStateWithLifecycle()
                 Text(
                     text = "Ostatnie wydatki",
                     style = MaterialTheme.typography.titleMedium,
@@ -82,13 +83,15 @@ fun MainScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "W tym miesiącu: $count wydatków",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "Zobacz wszystkie",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { onSeeAllExpensesClick() }
                 )
             }
         }
-        item { TransactionsList(state.recentTransactions) }
+        item { TransactionsList(state.recentTransactions, onExpenseClick = onExpenseClick) }
         item { TopCategoryCard(state) }
 
         item {
@@ -466,14 +469,20 @@ fun StatCard(
 }
 
 @Composable
-fun TransactionsList(transactions: List<Transaction>) {
+fun TransactionsList(
+    transactions: List<Transaction>,
+    onExpenseClick: (String) -> Unit = {}
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         shape = RoundedCornerShape(24.dp)
     ) {
         Column {
             transactions.forEach { transaction ->
-                TransactionRow(transaction)
+                TransactionRow(
+                    transaction = transaction,
+                    onExpenseClick = onExpenseClick
+                )
                 if (transaction != transactions.last()) {
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -486,10 +495,14 @@ fun TransactionsList(transactions: List<Transaction>) {
 }
 
 @Composable
-fun TransactionRow(transaction: Transaction) {
+fun TransactionRow(
+    transaction: Transaction,
+    onExpenseClick: (String) -> Unit = {}
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onExpenseClick(transaction.id) }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

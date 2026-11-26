@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.expense_tracker.data.local.dao.CategoryTotal
 import com.example.expense_tracker.data.repository.BudgetRepository
 import com.example.expense_tracker.data.repository.ExpenseRepository
+import com.example.expense_tracker.data.repository.RecurringPaymentRepository
 import kotlinx.coroutines.launch
 import com.example.expense_tracker.data.local.datastore.SessionManager
 import kotlinx.coroutines.flow.filterNotNull
@@ -20,7 +21,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.Date
+import java.util.concurrent.TimeUnit
 import com.example.expense_tracker.domain.model.Budget
+import com.example.expense_tracker.domain.model.RecurringPayment
+import com.example.expense_tracker.domain.model.startOfDay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.catch
 
@@ -57,7 +62,9 @@ data class UpcomingPayment(
     val date: String, // np. "25 PAŹ"
     val subtitle: String, // np. "Co miesiąc"
     val daysLeft: String, // np. "Jutro"
-    val isUrgent: Boolean = false
+    val isUrgent: Boolean = false,
+    val isOverdue: Boolean = false,
+    val daysOverdue: Int = 0
 )
 
 data class Transaction(
@@ -79,17 +86,24 @@ data class MainScreenState(
     val budget: BudgetState = BudgetState(),
     val recentTransactions: List<Transaction> = emptyList(),
     val upcomingPayments: List<UpcomingPayment> = emptyList(),
+    val upcomingThisWeekCount: Int = 0,
+    val overduePayment: UpcomingPayment? = null,   // pierwsza zaległa płatność (alert)
+    val payingPaymentIds: Set<String> = emptySet(), // trwa dodawanie do wydatków
+    val paymentMessage: String? = null,
     val topCategory: String = "",
     val topCategoryAmount: Double = 0.0,
     val topCategoryPercent: Int = 0,
-    val hasOverduePayment: Boolean = true, // Dla czerwonego alertu na dole
     val isLoading: Boolean = false,
     val errorMessage: String? = null
-)
+) {
+    val hasOverduePayment: Boolean get() = overduePayment != null
+}
+
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val budgetRepository: BudgetRepository,
     private val expenseRepository: ExpenseRepository,
+    private val recurringPaymentRepository: RecurringPaymentRepository,
     private val sessionManager: SessionManager,
 ) : ViewModel() {
 
@@ -143,6 +157,7 @@ class MainViewModel @Inject constructor(
         updateCurrentDate()
         observeMonthlyAmount()
         observeTopCategory()
+        observeUpcomingPayments()
     }
 
     fun loadData() {
@@ -158,16 +173,7 @@ class MainViewModel @Inject constructor(
             }
             _userId.value = userId
 
-            // Płatności zostają
-            val payments = listOf(
-                UpcomingPayment("1", "Czynsz", 2050.00, "25 PAŹ", "Co miesiąc", "Jutro", true),
-                UpcomingPayment("2", "Netflix", 43.00, "27 PAŹ", "Co miesiąc", "Za 3 dni"),
-                UpcomingPayment("3", "Telefon", 141.99, "29 PAŹ", "Co miesiąc", "Za 5 dni")
-            )
-
-            _uiState.update {
-                it.copy(isLoading = false, upcomingPayments = payments)
-            }
+            _uiState.update { it.copy(isLoading = false) }
 
             // Transakcje z bazy – Flow, odświeża się automatycznie
             expenseRepository.observeRecentTransactions(userId, limit = 3)
@@ -182,7 +188,97 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // ==========================================
+    // OPŁATY CYKLICZNE
+    // ==========================================
 
+    /** Kliknięcie "+" – dodaje opłatę do wydatków i przesuwa jej termin. */
+    fun onPayRecurringPayment(paymentId: String) {
+        if (paymentId in _uiState.value.payingPaymentIds) return
+
+        viewModelScope.launch {
+            val userId = _userId.value ?: sessionManager.getUserId() ?: return@launch
+            _uiState.update { it.copy(payingPaymentIds = it.payingPaymentIds + paymentId) }
+
+            try {
+                val name = recurringPaymentRepository.registerPayment(paymentId, userId)
+                _uiState.update {
+                    it.copy(
+                        paymentMessage = if (name != null) "Dodano \"$name\" do wydatków"
+                        else "Nie znaleziono opłaty"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(paymentMessage = "Nie udało się dodać wydatku: ${e.message}")
+                }
+            } finally {
+                _uiState.update { it.copy(payingPaymentIds = it.payingPaymentIds - paymentId) }
+            }
+        }
+    }
+
+    fun consumePaymentMessage() {
+        _uiState.update { it.copy(paymentMessage = null) }
+    }
+
+    private fun observeUpcomingPayments() {
+        viewModelScope.launch {
+            _userId
+                .filterNotNull()
+                .flatMapLatest { userId ->
+                    recurringPaymentRepository.observeUpcomingRecurringPayments(userId, limit = 5)
+                }
+                .catch { e ->
+                    _uiState.update {
+                        it.copy(errorMessage = "Błąd ładowania opłat cyklicznych: ${e.message}")
+                    }
+                }
+                .collect { payments ->
+                    val today = startOfDay()
+                    val upcoming = payments.map { it.toUpcomingPayment(today) }
+                    val thisWeek = payments.count { daysBetween(today, it.nextDueDate) in 0..6 }
+
+                    _uiState.update {
+                        it.copy(
+                            upcomingPayments = upcoming,
+                            upcomingThisWeekCount = thisWeek,
+                            overduePayment = upcoming.firstOrNull { p -> p.isOverdue }
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun RecurringPayment.toUpcomingPayment(today: Long): UpcomingPayment {
+        val locale = Locale("pl", "PL")
+        val days = daysBetween(today, nextDueDate)
+
+        val daysLeftText = when {
+            days < 0 -> "${-days} ${pluralDni(-days)} po terminie"
+            days == 0 -> "Dziś"
+            days == 1 -> "Jutro"
+            else -> "Za $days dni"
+        }
+
+        // "24 LIS" – MainScreen dzieli po spacji na dzień i miesiąc
+        val dateText = SimpleDateFormat("d LLL", locale)
+            .format(Date(nextDueDate))
+            .uppercase(locale)
+            .replace(".", "")
+
+        return UpcomingPayment(
+            id = id,
+            title = name,
+            amount = amount / 100.0,
+            date = dateText,
+            subtitle = listOfNotNull(frequency.label, categoryName).joinToString(" • "),
+            daysLeft = daysLeftText,
+            isUrgent = days <= 1,
+            isOverdue = days < 0,
+            daysOverdue = if (days < 0) -days else 0
+        )
+    }
 
     private fun updateCurrentDate() {
         val calendar = Calendar.getInstance()
@@ -328,6 +424,15 @@ private fun currentMonthKey(): String {
     val m = cal.get(Calendar.MONTH) + 1
     return String.format(Locale.US, "%04d-%02d", y, m)
 }
+
+/** Liczba dni kalendarzowych od [fromDay] do [toMillis] (ujemna = w przeszłości). */
+private fun daysBetween(fromDay: Long, toMillis: Long): Int {
+    val diff = startOfDay(toMillis) - fromDay
+    // zaokrąglenie chroni przed zmianą czasu (23 h / 25 h)
+    return Math.round(diff.toDouble() / TimeUnit.DAYS.toMillis(1)).toInt()
+}
+
+private fun pluralDni(n: Int): String = if (n == 1) "dzień" else "dni"
 
 fun calculateMonthProgress(
     spent: Double,

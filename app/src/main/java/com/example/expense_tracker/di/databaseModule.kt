@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.expense_tracker.data.local.AppDatabase
 import com.example.expense_tracker.data.local.dao.AppDao
+import com.example.expense_tracker.data.local.dao.RecurringPaymentDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,7 +25,9 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "expense_tracker.db"
-        ).build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
     }
 
     @Provides
@@ -33,5 +36,13 @@ object DatabaseModule {
         database: AppDatabase
     ): AppDao {
         return database.appDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRecurringPaymentDao(
+        database: AppDatabase
+    ): RecurringPaymentDao {
+        return database.recurringPaymentDao()
     }
 }

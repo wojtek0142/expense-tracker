@@ -26,6 +26,8 @@ import com.example.expense_tracker.ui.history.HistoryViewModel
 import com.example.expense_tracker.ui.main.MainScreen
 import com.example.expense_tracker.ui.main.MainViewModel
 import com.example.expense_tracker.ui.receipt.AddReceiptScreen
+import com.example.expense_tracker.ui.recurring.RecurringPaymentsScreen
+import com.example.expense_tracker.ui.recurring.RecurringPaymentsViewModel
 import com.example.expense_tracker.ui.reports.AllCategoriesScreen
 import com.example.expense_tracker.ui.reports.ReportsScreen
 import com.example.expense_tracker.ui.reports.ReportsViewModel
@@ -83,6 +85,9 @@ fun AppNavigation() {
                     },
                     onSeeAllExpensesClick = {
                         navController.navigate("history")
+                    },
+                    onManageRecurringClick = {
+                        navController.navigate("recurring_payments")
                     }
                 )
             }
@@ -120,6 +125,13 @@ fun AppNavigation() {
                     onNavigateBack = {
                         navController.popBackStack()
                     }
+                )
+            }
+            composable("recurring_payments") {
+                val recurringViewModel: RecurringPaymentsViewModel = hiltViewModel()
+                RecurringPaymentsScreen(
+                    viewModel = recurringViewModel,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(Destination.Reports.route) {

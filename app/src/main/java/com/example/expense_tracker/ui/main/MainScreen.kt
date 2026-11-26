@@ -2,6 +2,30 @@ package com.example.expense_tracker.ui.main
 
 
 
+import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,11 +52,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,10 +75,19 @@ fun MainScreen(
     contentPadding: PaddingValues = PaddingValues(),
     onManageCategoriesClick: () -> Unit = {},
     onExpenseClick: (String) -> Unit = {},
-    onSeeAllExpensesClick: () -> Unit = {}
+    onSeeAllExpensesClick: () -> Unit = {},
+    onManageRecurringClick: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
+    // Komunikat po dodaniu opłaty cyklicznej do wydatków
+    LaunchedEffect(state.paymentMessage) {
+        state.paymentMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.consumePaymentMessage()
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -64,13 +99,15 @@ fun MainScreen(
             start = 16.dp,
             end = 16.dp
         ),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        // Bez spacedBy: odstępy dodaje section(), dzięki czemu wiersze
+        // nadchodzących płatności mogą być osobnymi elementami (animateItem)
+        // i nadal wyglądać jak jedna karta.
     ) {
-        item { HeaderSection(state.userName, state.currentDate) }
-        item { BudgetCard(state.budget, state.currentMonth) }
-        item { DailyStatsRow(state.budget) }
+        section("header") { HeaderSection(state.userName, state.currentDate) }
+        section("budget") { BudgetCard(state.budget, state.currentMonth) }
+        section("daily_stats") { DailyStatsRow(state.budget) }
 
-        item {
+        section("recent_header") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -91,36 +128,109 @@ fun MainScreen(
                 )
             }
         }
-        item { TransactionsList(state.recentTransactions, onExpenseClick = onExpenseClick) }
-        item { TopCategoryCard(state) }
+        section("recent_list") { TransactionsList(state.recentTransactions, onExpenseClick = onExpenseClick) }
+        section("top_category") { TopCategoryCard(state) }
 
-        item {
+        section("upcoming_header") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Column {
+                    Text(
+                        text = "Nadchodzące płatności",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    // Płynna zmiana licznika "X płatności w tym tygodniu"
+                    AnimatedContent(
+                        targetState = upcomingThisWeekText(state.upcomingThisWeekCount),
+                        transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(250)) },
+                        label = "upcoming_count"
+                    ) { text ->
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 Text(
-                    text = "Nadchodzące płatności",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = "Zarządzaj",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = "3 płatności w tym tygodniu",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier.clickable { onManageRecurringClick() }
                 )
             }
         }
-        item { UpcomingPaymentsList(state.upcomingPayments) }
 
-        if (state.hasOverduePayment) {
-            item { OverduePaymentAlert() }
+        if (state.upcomingPayments.isEmpty()) {
+            item(key = "upcoming_empty") {
+                Box(
+                    Modifier
+                        .animateItem()
+                        .padding(bottom = SectionSpacing)
+                ) {
+                    EmptyUpcomingPaymentsCard(onClick = onManageRecurringClick)
+                }
+            }
+        } else {
+            // Każda płatność to osobny element listy → animowane pojawianie się,
+            // znikanie i przesuwanie (np. po kliknięciu "+" opłata zjeżdża niżej)
+            val payments = state.upcomingPayments
+            itemsIndexed(payments, key = { _, p -> "upcoming_${p.id}" }) { index, payment ->
+                UpcomingPaymentListItem(
+                    payment = payment,
+                    isFirst = index == 0,
+                    isLast = index == payments.lastIndex,
+                    isPaying = payment.id in state.payingPaymentIds,
+                    onPayClick = { viewModel.onPayRecurringPayment(payment.id) },
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = tween(300),
+                        placementSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        ),
+                        fadeOutSpec = tween(200)
+                    )
+                )
+            }
         }
 
-        item { ManageCategoriesCard(onManageCategoriesClick = onManageCategoriesClick) }
+        // Element jest zawsze obecny – pokazuje/ukrywa się animacją
+        item(key = "overdue_alert") {
+            AnimatedOverdueAlert(
+                payment = state.overduePayment,
+                onClick = onManageRecurringClick
+            )
+        }
+
+        section("manage_categories", bottomSpacing = 0.dp) {
+            ManageCategoriesCard(onManageCategoriesClick = onManageCategoriesClick)
+        }
     }
+}
+
+private val SectionSpacing = 16.dp
+
+/** Element listy z odstępem pod spodem (zastępuje Arrangement.spacedBy). */
+private fun LazyListScope.section(
+    key: String,
+    bottomSpacing: Dp = SectionSpacing,
+    content: @Composable () -> Unit
+) {
+    item(key = key) {
+        Box(Modifier.padding(bottom = bottomSpacing)) { content() }
+    }
+}
+
+private fun upcomingThisWeekText(count: Int): String = when {
+    count == 0 -> "Brak płatności w tym tygodniu"
+    count == 1 -> "1 płatność w tym tygodniu"
+    else -> "$count płatności w tym tygodniu"
 }
 
 @Composable
@@ -612,16 +722,24 @@ fun TopCategoryCard(state: MainScreenState) {
     }
 }
 
-// -- widget nadchodzace platnosci
+// -- widget nadchodzace platnosci (opłaty cykliczne z bazy)
 @Composable
-fun UpcomingPaymentsList(payments: List<UpcomingPayment>) {
+fun UpcomingPaymentsList(
+    payments: List<UpcomingPayment>,
+    payingIds: Set<String> = emptySet(),
+    onPayClick: (String) -> Unit = {}
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         shape = RoundedCornerShape(24.dp)
     ) {
         Column {
             payments.forEach { payment ->
-                UpcomingPaymentRow(payment)
+                UpcomingPaymentRow(
+                    payment = payment,
+                    isPaying = payment.id in payingIds,
+                    onPayClick = { onPayClick(payment.id) }
+                )
                 if (payment != payments.last()) {
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -635,29 +753,40 @@ fun UpcomingPaymentsList(payments: List<UpcomingPayment>) {
 
 // -- pojedynczy wpis w nadchodzacych platnosciach ---
 @Composable
-fun UpcomingPaymentRow(payment: UpcomingPayment) {
+fun UpcomingPaymentRow(
+    payment: UpcomingPayment,
+    isPaying: Boolean = false,
+    onPayClick: () -> Unit = {}
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val dateParts = payment.date.split(" ")
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+                .background(
+                    if (payment.isOverdue) MaterialTheme.colorScheme.errorContainer
+                    else MaterialTheme.colorScheme.surfaceVariant,
+                    RoundedCornerShape(12.dp)
+                )
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
+            val dateColor = if (payment.isOverdue) MaterialTheme.colorScheme.onErrorContainer
+            else MaterialTheme.colorScheme.onSurfaceVariant
             Text(
-                text = payment.date.split(" ")[0],
+                text = dateParts.getOrElse(0) { "" },
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = dateColor
             )
             Text(
-                text = payment.date.split(" ")[1],
+                text = dateParts.getOrElse(1) { "" },
                 fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = dateColor
             )
         }
 
@@ -681,7 +810,8 @@ fun UpcomingPaymentRow(payment: UpcomingPayment) {
                 Text(
                     text = payment.subtitle,
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
                 )
             }
         }
@@ -699,24 +829,185 @@ fun UpcomingPaymentRow(payment: UpcomingPayment) {
                 color = if (payment.isUrgent) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
+        Spacer(modifier = Modifier.width(4.dp))
+
+        // "+" – dodaje opłatę do listy wydatków
+        FilledTonalIconButton(
+            onClick = onPayClick,
+            enabled = !isPaying,
+            modifier = Modifier.size(40.dp)
+        ) {
+            if (isPaying) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Dodaj ${payment.title} do wydatków"
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Pojedyncza płatność jako osobny element LazyColumn.
+ * Zaokrąglenia i separator zależą od pozycji, więc razem wyglądają jak jedna karta.
+ */
+@Composable
+fun UpcomingPaymentListItem(
+    payment: UpcomingPayment,
+    isFirst: Boolean,
+    isLast: Boolean,
+    isPaying: Boolean,
+    onPayClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val radius = 24.dp
+    val shape = RoundedCornerShape(
+        topStart = if (isFirst) radius else 0.dp,
+        topEnd = if (isFirst) radius else 0.dp,
+        bottomStart = if (isLast) radius else 0.dp,
+        bottomEnd = if (isLast) radius else 0.dp
+    )
+
+    Column(modifier = modifier.padding(bottom = if (isLast) SectionSpacing else 0.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+        ) {
+            UpcomingPaymentRow(
+                payment = payment,
+                isPaying = isPaying,
+                onPayClick = onPayClick
+            )
+            if (!isLast) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Alert o zaległej płatności: wysuwa się i zanika płynnie.
+ * Ostatnia wartość jest zapamiętana, żeby podczas animacji znikania
+ * alert wciąż miał co wyświetlić.
+ */
+@Composable
+fun AnimatedOverdueAlert(
+    payment: UpcomingPayment?,
+    onClick: () -> Unit = {}
+) {
+    var lastPayment by remember { mutableStateOf(payment) }
+    if (payment != null && payment != lastPayment) lastPayment = payment
+
+    AnimatedVisibility(
+        visible = payment != null,
+        enter = fadeIn(tween(300)) +
+                expandVertically(tween(300), expandFrom = Alignment.Top) +
+                slideInVertically(tween(300)) { -it / 3 },
+        exit = fadeOut(tween(200)) +
+                shrinkVertically(tween(250), shrinkTowards = Alignment.Top)
+    ) {
+        lastPayment?.let {
+            Box(Modifier.padding(bottom = SectionSpacing)) {
+                OverduePaymentAlert(payment = it, onClick = onClick)
+            }
+        }
     }
 }
 
 @Composable
-fun OverduePaymentAlert() {
-    Surface(
-        color = MaterialTheme.colorScheme.errorContainer,
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth()
+fun EmptyUpcomingPaymentsCard(onClick: () -> Unit = {}) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Autorenew,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = "Brak opłat cyklicznych",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Dodaj czynsz, abonamenty i subskrypcje",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun OverduePaymentAlert(
+    payment: UpcomingPayment,
+    onClick: () -> Unit = {}
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Delikatne pulsowanie ikony ostrzeżenia
+            val pulse = rememberInfiniteTransition(label = "overdue_pulse")
+            val iconScale by pulse.animateFloat(
+                initialValue = 1f,
+                targetValue = 1.18f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(700, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "overdue_icon_scale"
+            )
             Icon(
                 imageVector = Icons.Default.Warning,
                 contentDescription = "Alert",
-                tint = MaterialTheme.colorScheme.onErrorContainer
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.graphicsLayer {
+                    scaleX = iconScale
+                    scaleY = iconScale
+                }
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -727,7 +1018,7 @@ fun OverduePaymentAlert() {
                     fontSize = 12.sp
                 )
                 Text(
-                    text = "Ubezpieczenie • 89 zł • 3 dni po terminie",
+                    text = "${payment.title} • ${"%.2f".format(Locale("pl", "PL"), payment.amount)} zł • ${payment.daysLeft}",
                     color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.75f),
                     fontSize = 12.sp
                 )
